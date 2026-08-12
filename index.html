@@ -460,6 +460,7 @@
 
   // 🎮 ゲーム用変数
   let questionStartTime = 0;
+  let sessionStartTime = 0; // ⏱️ セッション（全問題）全体の開始時間
   let enemyHp = 100;
   let baseDamagePerQuestion = 0;
   let comboCount = 0;      // 現在のコンボ数
@@ -561,6 +562,9 @@
     comboCount = 0;
     maxComboCount = 0; // 最大コンボ数をリセット
     enemyHp = 100;     // HP満タン(100%)
+
+    // ⏱️ 全体の計測時間をクリアして計測開始
+    sessionStartTime = Date.now();
 
     // 👾 1回の学習で出現する敵を固定選択
     currentSessionEnemy = enemyList[Math.floor(Math.random() * enemyList.length)];
@@ -786,11 +790,25 @@
     }
   }
 
+  // ⏱️ 秒数を「○分○秒」の形式に変換するヘルパー関数
+  function formatElapsedTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins > 0) {
+      return `${mins}分${secs}秒`;
+    }
+    return `${secs}秒`;
+  }
+
   // 🏆 学習セッション終了処理（全問終了または撃破時）
   function finishQuiz() {
     const totalQ = currentQuestionIndex + 1; // 実際に解いた問題数
     const accuracyRate = Math.round((correctCount / totalQ) * 100);
     const isDefeated = enemyHp <= 0;
+
+    // ⏱️ 全体の所要時間を計算
+    const elapsedSeconds = Math.round((Date.now() - sessionStartTime) / 1000);
+    const timeFormatted = formatElapsedTime(elapsedSeconds);
     
     const titleMsg = isDefeated ? "🎉 敵を撃破しました！お見事！" : "💪 撃破ならず…！次回リベンジしよう！";
 
@@ -798,6 +816,7 @@
       `${titleMsg}\n\n` +
       `-------------------------\n` +
       `【学習リザルト】\n` +
+      `・クリア時間: ${timeFormatted}\n` +
       `・正答数: ${correctCount} / ${totalQ} 問 (挑戦問題数)\n` +
       `・正答率: ${accuracyRate}%\n` +
       `・最大コンボ: ${maxComboCount} COMBO🔥\n` +

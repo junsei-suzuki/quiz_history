@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>歴史 一問一答</title>
+  <style>
+    :root {
+      --primary: #4a6fa5;
+      --success: #28a745;
+      --danger: #dc3545;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: #333;
+      margin: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 500px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      text-align: center;
+      margin-top: 0;
+      color: var(--primary);
+    }
+
+    select, button, input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:active {
+      opacity: 0.9;
+    }
+
+    .stats {
+      background: #eef2f7;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-around;
+      text-align: center;
+    }
+
+    .question-card {
+      background: #f1f3f5;
+      padding: 15px;
+      border-radius: 8px;
+      min-height: 80px;
+      font-size: 1.1rem;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+    }
+
+    .feedback {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: bold;
+      text-align: center;
+      display: none;
+    }
+
+    .feedback.correct {
+      background-color: #d4edda;
+      color: var(--success);
+      display: block;
+    }
+
+    .feedback.incorrect {
+      background-color: #f8d7da;
+      color: var(--danger);
+      display: block;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <h1>歴史 一問一答</h1>
+
+  <!-- 設定画面 -->
+  <div id="setup-screen">
+    <label for="era-select"><b>出題モードを選択:</b></label>
+    <select id="era-select">
+      <option value="ALL">全時代（ランダム順）</option>
+      <!-- JavaScriptで時代を追加 -->
+    </select>
+    
+    <button id="start-btn">学習を開始する</button>
+    <button id="review-btn" style="background-color: #6c757d;">間違えた問題を復習する (0件)</button>
+  </div>
+
+  <!-- クイズ画面 -->
+  <div id="quiz-screen" class="hidden">
+    <div class="stats">
+      <div>モード: <span id="current-mode"></span></div>
+      <div>正答率: <span id="accuracy">0%</span></div>
+      <div>解いた数: <span id="progress">0/0</span></div>
+    </div>
+
+    <div class="question-card" id="question-text">
+      問題を読み込み中...
+    </div>
+
+    <form id="answer-form">
+      <input type="text" id="answer-input" placeholder="回答を入力（ひらがな・漢字）" autocomplete="off" required>
+      <button type="submit" id="submit-btn">回答する</button>
+    </form>
+
+    <div id="feedback" class="feedback"></div>
+    <button id="next-btn" class="hidden" style="margin-top: 10px;">次の問題へ</button>
+    <button id="back-btn" style="background-color: #6c757d; margin-top: 10px;">メニューに戻る</button>
+  </div>
+</div>
+
+<script>
+  let allQuestions = [];
+  let currentSessionQuestions = [];
+  let currentQuestionIndex = 0;
+  let correctCount = 0;
+  let wrongQuestions = JSON.parse(localStorage.getItem('wrongQuestions') || '[]');
+
+  // JSONデータの読み込み
+  fetch('questions.json')
+    .then(response => response.json())
+    .then(data => {
+      allQuestions = data;
+      initApp();
+    })
+    .catch(err => alert('questions.json の読み込みに失敗しました。'));
+
+  function initApp() {
+    // 時代の選択肢を自動生成
+    const eras = [...new Set(allQuestions.map(q => q.era))];
+    const select = document.getElementById('era-select');
+    eras.forEach(era => {
+      const option = document.createElement('option');
+      option.value = era;
+      option.textContent = era;
+      select.appendChild(option);
+    });
+
+    updateReviewBtn();
+  }
+
+  function updateReviewBtn() {
+    const btn = document.getElementById('review-btn');
+    btn.textContent = `間違えた問題を復習する (${wrongQuestions.length}件)`;
+    btn.disabled = wrongQuestions.length === 0;
+  }
+
+  // クイズ開始
+  document.getElementById('start-btn').addEventListener('click', () => startQuiz(false));
+  document.getElementById('review-btn').addEventListener('click', () => startQuiz(true));
+
+  function startQuiz(isReviewMode) {
+    const selectedEra = document.getElementById('era-select').value;
+    
+    if (isReviewMode) {
+      currentSessionQuestions = [...wrongQuestions];
+      document.getElementById('current-mode').textContent = "復習";
+    } else if (selectedEra === 'ALL') {
+      currentSessionQuestions = [...allQuestions];
+      document.getElementById('current-mode').textContent = "全時代ランダム";
+    } else {
+      currentSessionQuestions = allQuestions.filter(q => q.era === selectedEra);
+      document.getElementById('current-mode').textContent = selectedEra;
+    }
+
+    // シャッフル（全時代ランダムまたは時代別でもランダム化）
+    currentSessionQuestions.sort(() => Math.random() - 0.5);
+
+    currentQuestionIndex = 0;
+    correctCount = 0;
+
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('quiz-screen').classList.remove('hidden');
+    showQuestion();
+  }
+
+  function showQuestion() {
+    const q = currentSessionQuestions[currentQuestionIndex];
+    document.getElementById('question-text').textContent = `【${q.era}】 ${q.question}`;
+    document.getElementById('answer-input').value = '';
+    document.getElementById('answer-input').disabled = false;
+    document.getElementById('submit-btn').classList.remove('hidden');
+    document.getElementById('next-btn').classList.add('hidden');
+    
+    const feedback = document.getElementById('feedback');
+    feedback.className = 'feedback';
+    feedback.textContent = '';
+
+    updateStats();
+  }
+
+  function updateStats() {
+    const total = currentQuestionIndex;
+    const accuracy = total === 0 ? 0 : Math.round((correctCount / total) * 100);
+    document.getElementById('accuracy').textContent = `${accuracy}%`;
+    document.getElementById('progress').textContent = `${currentQuestionIndex + 1}/${currentSessionQuestions.length}`;
+  }
+
+  // 解答処理
+  document.getElementById('answer-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById('answer-input').value.trim();
+    const q = currentSessionQuestions[currentQuestionIndex];
+    const feedback = document.getElementById('feedback');
+
+    document.getElementById('answer-input').disabled = true;
+    document.getElementById('submit-btn').classList.add('hidden');
+
+    // 完全一致判定（空白除去・小文字化処理）
+    if (input.replaceAll(' ', '') === q.answer.replaceAll(' ', '')) {
+      correctCount++;
+      feedback.textContent = "正解！⭕";
+      feedback.className = "feedback correct";
+      
+      // 復習リストから削除（あれば）
+      wrongQuestions = wrongQuestions.filter(item => item.id !== q.id);
+    } else {
+      feedback.textContent = `不正解…❌ (正解: ${q.answer})`;
+      feedback.className = "feedback incorrect";
+      
+      // 復習リストに追加（重複防ぐ）
+      if (!wrongQuestions.some(item => item.id === q.id)) {
+        wrongQuestions.push(q);
+      }
+    }
+
+    localStorage.setItem('wrongQuestions', JSON.stringify(wrongQuestions));
+    updateReviewBtn();
+
+    if (currentQuestionIndex + 1 < currentSessionQuestions.length) {
+      document.getElementById('next-btn').classList.remove('hidden');
+    } else {
+      setTimeout(() => {
+        alert(`お疲れ様でした！最終正答率: ${Math.round((correctCount / currentSessionQuestions.length) * 100)}%`);
+        goBack();
+      }, 500);
+    }
+  });
+
+  document.getElementById('next-btn').addEventListener('click', () => {
+    currentQuestionIndex++;
+    showQuestion();
+  });
+
+  document.getElementById('back-btn').addEventListener('click', goBack);
+
+  function goBack() {
+    document.getElementById('quiz-screen').classList.add('hidden');
+    document.getElementById('setup-screen').classList.remove('hidden');
+  }
+</script>
+</body>
+</html>

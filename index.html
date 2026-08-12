@@ -167,6 +167,28 @@
       transition: width 0.4s ease-out;
     }
 
+    /* コンボバッジ */
+    .combo-badge {
+      position: absolute;
+      top: 32px;
+      right: 15px;
+      background: #ff0055;
+      color: #fff;
+      font-weight: 900;
+      font-size: 0.85rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      box-shadow: 0 0 8px #ff0055;
+      opacity: 0;
+      transform: scale(0.5);
+      transition: all 0.3s;
+    }
+
+    .combo-badge.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
     /* 敵キャラクター */
     .enemy {
       font-size: 4.5rem;
@@ -200,7 +222,7 @@
       100% { transform: scale(0); opacity: 0; }
     }
 
-    /* 攻撃スラッシュ */
+    /* 通常攻撃スラッシュ */
     .slash-effect {
       position: absolute;
       top: 55%;
@@ -224,11 +246,35 @@
       100% { width: 140%; opacity: 0; }
     }
 
+    /* 🔥 コンボ連撃エフェクト (十字クロス) */
+    .combo-slash-effect {
+      position: absolute;
+      top: 55%;
+      left: 50%;
+      width: 0;
+      height: 10px;
+      background: #ffea00;
+      box-shadow: 0 0 20px #ff0055, 0 0 40px #ffea00;
+      transform: translate(-50%, -50%) rotate(45deg);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .combo-slash-effect.active {
+      animation: combo-slash 0.4s ease-out;
+    }
+
+    @keyframes combo-slash {
+      0% { width: 0; opacity: 1; }
+      50% { width: 150%; opacity: 1; }
+      100% { width: 180%; opacity: 0; }
+    }
+
     /* ダメージ数字ポップアップ */
     .damage-num {
       position: absolute;
       top: 25%;
-      font-size: 2.2rem;
+      font-size: 2rem;
       font-weight: 900;
       color: #ffea00;
       text-shadow: 3px 3px 0 #000, -2px -2px 0 #000;
@@ -238,8 +284,14 @@
     }
 
     .damage-num.critical {
-      color: #ff3366;
-      font-size: 2.6rem;
+      color: #ffaa00;
+      font-size: 2.3rem;
+    }
+
+    .damage-num.combo {
+      color: #ff0055;
+      font-size: 2.7rem;
+      text-shadow: 0 0 10px #ffea00, 3px 3px 0 #000;
     }
 
     .damage-num.active {
@@ -361,8 +413,10 @@
       <div class="hp-container">
         <div id="hp-bar" class="hp-bar"></div>
       </div>
+      <div id="combo-badge" class="combo-badge">0 COMBO!</div>
       <div id="enemy" class="enemy">🐲</div>
       <div id="slash" class="slash-effect"></div>
+      <div id="combo-slash" class="combo-slash-effect"></div>
       <div id="damage" class="damage-num">9999!</div>
     </div>
 
@@ -395,56 +449,10 @@
   let questionStartTime = 0;
   let enemyHp = 100;
   let baseDamagePerQuestion = 0;
+  let comboCount = 0; // 🔥 コンボカウント
+  let currentSessionEnemy = ''; // 1回の学習で固定する敵
 
-  // カテゴリーごとの固定モンスターマップ
-  const categoryEnemies = {
-    // 歴史
-    '旧石器・縄文・弥生': '🦴',
-    '飛鳥・奈良': '🏛️',
-    '平安': '⛩️',
-    '鎌倉・室町': '⚔️',
-    '安土桃山・江戸': '🏯',
-    '明治・大正': '🎩',
-    '昭和・現代': '🏙️',
-    
-    // 数学
-    '計算・方程式': '🔢',
-    '関数': '📈',
-    '図形': '📐',
-    '確率・データ': '🎲',
-
-    // 理科
-    '物理（光・音・力・電気）': '⚡',
-    '化学（状態変化・水溶液・化学変化）': '🧪',
-    '生物（植物・動物・細胞）': '🧫',
-    '地学（火山・地震・天気・天体）': '🌋',
-
-    // 地理
-    '日本の姿・都道府県': '🗾',
-    '世界地理': '🌍',
-    '日本の諸地域': '🏞️',
-
-    // 英語
-    '単語（名詞・動詞・形容詞）': '🔤',
-    '文法（時制・助動詞・不定詞など）': '📘',
-    '会話表現・熟語': '💬'
-  };
-
-  // 未登録カテゴリー用のフォールバックリスト
-  const fallbackEnemies = ['🐲', '👾', '👹', '💀', '🤖', '👻', '🦁', 'ガ'];
-
-  function getEnemyForCategory(category) {
-    if (categoryEnemies[category]) {
-      return categoryEnemies[category];
-    }
-    // 文字列ハッシュで常に同じ絵柄を返す
-    let hash = 0;
-    for (let i = 0; i < category.length; i++) {
-      hash = category.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash) % fallbackEnemies.length;
-    return fallbackEnemies[index];
-  }
+  const enemyList = ['🐲', '👾', '👹', '💀', '🤖', '👻', '🦁', '🦖', '神', '👺'];
 
   function selectSubject(key, name, labelText) {
     currentSubjectKey = key;
@@ -536,13 +544,18 @@
 
     currentQuestionIndex = 0;
     correctCount = 0;
-    enemyHp = 100; // HP満タン(100%)からスタート
+    comboCount = 0;
+    enemyHp = 100; // HP満タン(100%)
 
-    // 🎯 1問題あたりの基準攻撃力を計算（「約2秒で解答」した時、全問正解でちょうど100%削れる値）
+    // 👾 1回の学習で出現する敵を固定選択
+    currentSessionEnemy = enemyList[Math.floor(Math.random() * enemyList.length)];
+
+    // 🎯 1問題あたりの基準攻撃力を計算（「全問を5秒以内(適正)」に正解した時、ちょうど100%削れる設定）
     const totalQ = currentSessionQuestions.length;
     baseDamagePerQuestion = totalQ > 0 ? (100 / totalQ) : 100;
 
     updateHpBar();
+    updateComboBadge();
 
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('quiz-screen').classList.remove('hidden');
@@ -552,13 +565,12 @@
   function showQuestion() {
     clearTimeout(autoNextTimer);
 
-    const q = currentSessionQuestions[currentQuestionIndex];
-
-    // カテゴリーごとに固定の敵画像を表示
+    // 今回の学習用に固定した敵を表示
     const enemyEl = document.getElementById('enemy');
-    enemyEl.textContent = getEnemyForCategory(q.category);
-    enemyEl.className = 'enemy'; // スタイルリセット
+    enemyEl.textContent = currentSessionEnemy;
+    enemyEl.className = 'enemy'; 
 
+    const q = currentSessionQuestions[currentQuestionIndex];
     document.getElementById('question-text').textContent = `【${q.category}】 ${q.question}`;
     document.getElementById('answer-input').value = '';
     document.getElementById('answer-input').disabled = false;
@@ -571,7 +583,7 @@
 
     updateStats();
 
-    // ⏱️ 出題された瞬間のタイムを記録
+    // ⏱️ 出題時間を記録
     questionStartTime = Date.now();
   }
 
@@ -587,58 +599,91 @@
     hpBar.style.width = `${Math.max(0, enemyHp)}%`;
 
     if (enemyHp <= 30) {
-      hpBar.style.background = 'linear-gradient(to right, #dc3545, #ff6b6b)'; // 瀕死で赤く
+      hpBar.style.background = 'linear-gradient(to right, #dc3545, #ff6b6b)';
     } else {
       hpBar.style.background = 'linear-gradient(to right, #28a745, #85e085)';
     }
   }
 
-  // 🎮 攻撃アニメーション＆ダメージ判定処理
+  function updateComboBadge() {
+    const badge = document.getElementById('combo-badge');
+    if (comboCount >= 2) {
+      badge.textContent = `${comboCount} COMBO!🔥`;
+      badge.classList.add('show');
+    } else {
+      badge.classList.remove('show');
+    }
+  }
+
+  // 🎮 攻撃アニメーション＆コンボ判定処理
   function triggerAttackEffect(timeSec) {
     const enemy = document.getElementById('enemy');
     const slash = document.getElementById('slash');
+    const comboSlash = document.getElementById('combo-slash');
     const damage = document.getElementById('damage');
 
-    // 倍率判定（2秒以内なら100%削れるペース）
     let multiplier = 1.0;
     let label = '';
-    
-    if (timeSec <= 1.5) {
-      multiplier = 1.3; // 超高速：1.3倍
-      label = 'CRITICAL! ';
-      damage.className = 'damage-num critical';
-    } else if (timeSec <= 2.2) {
-      multiplier = 1.0; // 2秒前後：標準
-      label = 'GREAT! ';
-      damage.className = 'damage-num';
+    let isComboAttack = false;
+
+    // ⏱️ 5秒判定 & コンボ処理
+    if (timeSec <= 5.0) {
+      comboCount++; // 5秒以内ならコンボ加算
+      
+      if (comboCount >= 3) {
+        // 🔥 3連続5秒以内：コンボ攻撃！
+        multiplier = 1.5;
+        label = `🔥 ${comboCount} COMBO! `;
+        damage.className = 'damage-num combo';
+        isComboAttack = true;
+      } else if (timeSec <= 3.0) {
+        // 3秒以内：クリティカル
+        multiplier = 1.2;
+        label = 'CRITICAL! ';
+        damage.className = 'damage-num critical';
+      } else {
+        // 5秒以内：適正攻撃 (GREAT)
+        multiplier = 1.0;
+        label = 'GREAT! ';
+        damage.className = 'damage-num';
+      }
     } else {
-      multiplier = 0.6; // 遅め：0.6倍
+      // 5秒超過：コンボリセット＆控えめ攻撃
+      comboCount = 0;
+      multiplier = 0.6;
       label = 'GOOD ';
       damage.className = 'damage-num';
     }
 
-    // ダメージ計算（HP割合から換算）
+    updateComboBadge();
+
+    // ダメージ計算（HP減算）
     const damagePercent = baseDamagePerQuestion * multiplier;
     enemyHp -= damagePercent;
     if (enemyHp < 0) enemyHp = 0;
 
     updateHpBar();
 
-    // 表示用数値（画面上は見栄えよく大数で表示）
+    // 表示用数値
     const displayDamage = Math.round(damagePercent * 100);
     damage.textContent = `${label}${displayDamage}`;
 
     // アニメーションのリセット＆発動
     enemy.classList.remove('shake', 'defeated');
     slash.classList.remove('active');
+    comboSlash.classList.remove('active');
     damage.classList.remove('active');
 
     setTimeout(() => {
       slash.classList.add('active');
+      if (isComboAttack) {
+        comboSlash.classList.add('active'); // クロス連撃
+      }
+
       damage.classList.add('active');
 
       if (enemyHp <= 0) {
-        enemy.classList.add('defeated'); // 敵撃破！
+        enemy.classList.add('defeated'); // 敵撃破
       } else {
         enemy.classList.add('shake');
       }
@@ -652,7 +697,7 @@
     const q = currentSessionQuestions[currentQuestionIndex];
     const feedback = document.getElementById('feedback');
 
-    // ⏱️ 解答にかかった時間（秒）を計算
+    // ⏱️ 解答時間を計測
     const answerTimeSec = (Date.now() - questionStartTime) / 1000;
 
     document.getElementById('answer-input').disabled = true;
@@ -676,6 +721,9 @@
 
     } else {
       // --- 不正解時 ---
+      comboCount = 0; // 不正解でコンボ切れ
+      updateComboBadge();
+
       feedback.className = "feedback incorrect";
       feedback.textContent = `不正解…❌ (正解: ${q.answer})`;
       if (!wrongQuestions.some(item => item.id === q.id)) {
@@ -695,7 +743,7 @@
       showQuestion();
     } else {
       const isDefeated = enemyHp <= 0;
-      const resultMsg = isDefeated ? "🎉 敵を撃破しました！お見事！" : "💪 撃破ならず…次はもっと早く答えてみよう！";
+      const resultMsg = isDefeated ? "🎉 敵を撃破しました！お見事！" : "💪 撃破ならず…次はもっとコンボを狙ってみよう！";
       alert(`${resultMsg}\n最終正答率: ${Math.round((correctCount / currentSessionQuestions.length) * 100)}%`);
       goSetup();
     }

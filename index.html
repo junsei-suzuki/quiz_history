@@ -246,7 +246,7 @@
       100% { width: 140%; opacity: 0; }
     }
 
-    /* 🔥 コンボ連撃エフェクト (十字クロス) */
+    /* 🔥 コンボ連撃エフェクト */
     .combo-slash-effect {
       position: absolute;
       top: 55%;
@@ -449,7 +449,8 @@
   let questionStartTime = 0;
   let enemyHp = 100;
   let baseDamagePerQuestion = 0;
-  let comboCount = 0; // 🔥 コンボカウント
+  let comboCount = 0;      // 現在のコンボ数
+  let maxComboCount = 0;   // 🏆 セッション内の最大コンボ数
   let currentSessionEnemy = ''; // 1回の学習で固定する敵
 
   const enemyList = ['🐲', '👾', '👹', '💀', '🤖', '👻', '🦁', '🦖', '神', '👺'];
@@ -545,12 +546,13 @@
     currentQuestionIndex = 0;
     correctCount = 0;
     comboCount = 0;
-    enemyHp = 100; // HP満タン(100%)
+    maxComboCount = 0; // 最大コンボ数をリセット
+    enemyHp = 100;     // HP満タン(100%)
 
     // 👾 1回の学習で出現する敵を固定選択
     currentSessionEnemy = enemyList[Math.floor(Math.random() * enemyList.length)];
 
-    // 🎯 1問題あたりの基準攻撃力を計算（「全問を5秒以内(適正)」に正解した時、ちょうど100%削れる設定）
+    // 🎯 1問題あたりの基準攻撃力を計算
     const totalQ = currentSessionQuestions.length;
     baseDamagePerQuestion = totalQ > 0 ? (100 / totalQ) : 100;
 
@@ -629,6 +631,9 @@
     // ⏱️ 5秒判定 & コンボ処理
     if (timeSec <= 5.0) {
       comboCount++; // 5秒以内ならコンボ加算
+      if (comboCount > maxComboCount) {
+        maxComboCount = comboCount; // 🏆 最大コンボ更新
+      }
       
       if (comboCount >= 3) {
         // 🔥 3連続5秒以内：コンボ攻撃！
@@ -742,9 +747,23 @@
       currentQuestionIndex++;
       showQuestion();
     } else {
+      // 🏆 全問終了時のリザルト表示
+      const totalQ = currentSessionQuestions.length;
+      const accuracyRate = Math.round((correctCount / totalQ) * 100);
       const isDefeated = enemyHp <= 0;
-      const resultMsg = isDefeated ? "🎉 敵を撃破しました！お見事！" : "💪 撃破ならず…次はもっとコンボを狙ってみよう！";
-      alert(`${resultMsg}\n最終正答率: ${Math.round((correctCount / currentSessionQuestions.length) * 100)}%`);
+      
+      const titleMsg = isDefeated ? "🎉 敵を撃破しました！お見事！" : "💪 撃破ならず…！次回リベンジしよう！";
+
+      const summaryText = 
+        `${titleMsg}\n\n` +
+        `-------------------------\n` +
+        `【学習リザルト】\n` +
+        `・正答数: ${correctCount} / ${totalQ} 問\n` +
+        `・正答率: ${accuracyRate}%\n` +
+        `・最大コンボ: ${maxComboCount} COMBO🔥\n` +
+        `-------------------------`;
+
+      alert(summaryText);
       goSetup();
     }
   }

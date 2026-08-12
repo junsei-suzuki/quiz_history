@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>歴史 一問一答</title>
+  <title>一問一答ポータル</title>
   <style>
     :root {
       --primary: #4a6fa5;
@@ -32,12 +32,14 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
-    h1 {
-      font-size: 1.4rem;
+    h1, h2 {
       text-align: center;
       margin-top: 0;
       color: var(--primary);
     }
+
+    h1 { font-size: 1.4rem; }
+    h2 { font-size: 1.2rem; }
 
     button, input[type="text"] {
       width: 100%;
@@ -57,17 +59,31 @@
       cursor: pointer;
     }
 
-    button:active {
-      opacity: 0.9;
-    }
-
+    button:active { opacity: 0.9; }
     button:disabled {
       background-color: #cccccc !important;
       cursor: not-allowed;
     }
 
-    /* チェックボックス用のスタイル */
-    .era-group {
+    /* 教科選択グリッド */
+    .subject-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .subject-btn {
+      padding: 20px 10px;
+      font-size: 1.1rem;
+      background-color: #eef2f7;
+      color: #333;
+      border: 2px solid var(--primary);
+      margin-bottom: 0;
+    }
+
+    /* 分野・カテゴリチェックボックス */
+    .category-group {
       background: #f1f3f5;
       padding: 15px;
       border-radius: 8px;
@@ -76,7 +92,7 @@
       overflow-y: auto;
     }
 
-    .era-item {
+    .category-item {
       display: flex;
       align-items: center;
       margin-bottom: 10px;
@@ -84,7 +100,7 @@
       cursor: pointer;
     }
 
-    .era-item input[type="checkbox"] {
+    .category-item input[type="checkbox"] {
       width: 20px;
       height: 20px;
       margin-right: 10px;
@@ -147,34 +163,46 @@
       display: block;
     }
 
-    .hidden {
-      display: none;
-    }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
 
 <div class="app-container">
-  <h1>歴史 一問一答</h1>
+  <!-- 1. ホーム画面（教科選択） -->
+  <div id="home-screen">
+    <h1>一問一答 学習アプリ</h1>
+    <p style="text-align: center; color: #666;">学習したい教科を選んでください</p>
+    
+    <div class="subject-grid">
+      <button class="subject-btn" onclick="selectSubject('history', '歴史', '時代')">📜 歴史</button>
+      <button class="subject-btn" onclick="selectSubject('math', '数学', '分野')">📐 数学</button>
+      <button class="subject-btn" onclick="selectSubject('science', '理科', '分野')">🧪 理科</button>
+      <button class="subject-btn" onclick="selectSubject('geography', '地理', '地方・分野')">🌍 地理</button>
+      <button class="subject-btn" onclick="selectSubject('english', '英語', 'ジャンル', true)" style="grid-column: span 2;">英 単語・文法</button>
+    </div>
+  </div>
 
-  <!-- 設定画面 -->
-  <div id="setup-screen">
-    <label><b>出題する時代を選択（複数可）:</b></label>
+  <!-- 2. 分野設定画面 -->
+  <div id="setup-screen" class="hidden">
+    <h2 id="subject-title">教科名</h2>
+    <label><b id="category-label">出題分野を選択（複数可）:</b></label>
     
     <div class="select-tools">
       <button type="button" id="select-all-btn">すべて選択</button>
       <button type="button" id="deselect-all-btn">すべて解除</button>
     </div>
 
-    <div class="era-group" id="era-checkboxes">
-      <!-- JavaScriptで時代チェックボックスを自動生成 -->
+    <div class="category-group" id="category-checkboxes">
+      <!-- JavaScriptで動的生成 -->
     </div>
     
     <button id="start-btn">学習を開始する</button>
-    <button id="review-btn" style="background-color: #6c757d;">間違えた問題を復習する (0件)</button>
+    <button id="review-btn" style="background-color: #6c757d;">復習する (0件)</button>
+    <button onclick="goHome()" style="background-color: #888; margin-top: 5px;">ホームに戻る</button>
   </div>
 
-  <!-- クイズ画面 -->
+  <!-- 3. クイズ画面 -->
   <div id="quiz-screen" class="hidden">
     <div class="stats">
       <div>モード: <span id="current-mode"></span></div>
@@ -187,107 +215,114 @@
     </div>
 
     <form id="answer-form">
-      <input type="text" id="answer-input" placeholder="回答を入力（ひらがな・漢字）" autocomplete="off" required>
+      <input type="text" id="answer-input" placeholder="回答を入力" autocomplete="off" required>
       <button type="submit" id="submit-btn">回答する</button>
     </form>
 
     <div id="feedback" class="feedback"></div>
     <button id="next-btn" class="hidden" style="margin-top: 10px;">次の問題へ</button>
-    <button id="back-btn" style="background-color: #6c757d; margin-top: 10px;">メニューに戻る</button>
+    <button id="back-setup-btn" style="background-color: #6c757d; margin-top: 10px;">分野選択に戻る</button>
   </div>
 </div>
 
 <script>
+  let currentSubjectKey = '';
+  let currentSubjectName = '';
   let allQuestions = [];
   let currentSessionQuestions = [];
   let currentQuestionIndex = 0;
   let correctCount = 0;
-  let wrongQuestions = JSON.parse(localStorage.getItem('wrongQuestions') || '[]');
+  let wrongQuestions = [];
 
-  // JSONデータの読み込み
-  fetch('questions.json')
-    .then(response => response.json())
-    .then(data => {
-      allQuestions = data;
-      initApp();
-    })
-    .catch(err => alert('questions.json の読み込みに失敗しました。'));
+  // 教科を選択した時の処理
+  function selectSubject(key, name, labelText) {
+    currentSubjectKey = key;
+    currentSubjectName = name;
+    
+    document.getElementById('subject-title').textContent = `${name} 一問一答`;
+    document.getElementById('category-label').textContent = `出題する${labelText}を選択（複数可）:`;
 
-  function initApp() {
-    // 時代のチェックボックスを自動生成
-    const eras = [...new Set(allQuestions.map(q => q.era))];
-    const container = document.getElementById('era-checkboxes');
+    // ストレージから各教科の復習リストを取得
+    wrongQuestions = JSON.parse(localStorage.getItem(`wrongQuestions_${key}`) || '[]');
+
+    // 該当教科のJSONファイルを読み込む
+    fetch(`${key}.json`)
+      .then(response => {
+        if (!response.ok) throw new Error();
+        return response.json();
+      })
+      .then(data => {
+        allQuestions = data;
+        initSetupScreen();
+        document.getElementById('home-screen').classList.add('hidden');
+        document.getElementById('setup-screen').classList.remove('hidden');
+      })
+      .catch(err => alert(`${name}のデータ (${key}.json) の読み込みに失敗しました。ファイルが存在するか確認してください。`));
+  }
+
+  function initSetupScreen() {
+    const categories = [...new Set(allQuestions.map(q => q.category))];
+    const container = document.getElementById('category-checkboxes');
     container.innerHTML = '';
 
-    eras.forEach(era => {
+    categories.forEach(cat => {
       const label = document.createElement('label');
-      label.className = 'era-item';
+      label.className = 'category-item';
       
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
-      checkbox.value = era;
-      checkbox.checked = true; // 初期状態はすべてチェック
+      checkbox.value = cat;
+      checkbox.checked = true;
       checkbox.addEventListener('change', updateReviewBtn);
 
       label.appendChild(checkbox);
-      label.appendChild(document.createTextNode(era));
+      label.appendChild(document.createTextNode(cat));
       container.appendChild(label);
     });
 
     updateReviewBtn();
   }
 
-  // 選択中の時代を取得する共通関数
-  function getSelectedEras() {
-    const checkboxes = document.querySelectorAll('#era-checkboxes input[type="checkbox"]:checked');
+  function getSelectedCategories() {
+    const checkboxes = document.querySelectorAll('#category-checkboxes input[type="checkbox"]:checked');
     return Array.from(checkboxes).map(cb => cb.value);
   }
 
-  // 全選択・全解除ボタン
   document.getElementById('select-all-btn').addEventListener('click', () => {
-    document.querySelectorAll('#era-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = true);
+    document.querySelectorAll('#category-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = true);
     updateReviewBtn();
   });
 
   document.getElementById('deselect-all-btn').addEventListener('click', () => {
-    document.querySelectorAll('#era-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
+    document.querySelectorAll('#category-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
     updateReviewBtn();
   });
 
   function updateReviewBtn() {
-    const selectedEras = getSelectedEras();
-    // 選択された時代に含まれる間違えた問題をフィルタリング
-    const filteredWrong = wrongQuestions.filter(q => selectedEras.includes(q.era));
+    const selectedCats = getSelectedCategories();
+    const filteredWrong = wrongQuestions.filter(q => selectedCats.includes(q.category));
     
     const btn = document.getElementById('review-btn');
-    btn.textContent = `選択中の時代から復習する (${filteredWrong.length}件)`;
+    btn.textContent = `選択カテゴリから復習 (${filteredWrong.length}件)`;
     btn.disabled = filteredWrong.length === 0;
 
-    const startBtn = document.getElementById('start-btn');
-    startBtn.disabled = selectedEras.length === 0;
+    document.getElementById('start-btn').disabled = selectedCats.length === 0;
   }
 
-  // クイズ開始
   document.getElementById('start-btn').addEventListener('click', () => startQuiz(false));
   document.getElementById('review-btn').addEventListener('click', () => startQuiz(true));
 
   function startQuiz(isReviewMode) {
-    const selectedEras = getSelectedEras();
-
-    if (selectedEras.length === 0) {
-      alert('出題する時代を1つ以上選択してください。');
-      return;
-    }
+    const selectedCats = getSelectedCategories();
 
     if (isReviewMode) {
-      currentSessionQuestions = wrongQuestions.filter(q => selectedEras.includes(q.era));
-      document.getElementById('current-mode').textContent = "選択時代（復習）";
+      currentSessionQuestions = wrongQuestions.filter(q => selectedCats.includes(q.category));
+      document.getElementById('current-mode').textContent = "復習";
     } else {
-      currentSessionQuestions = allQuestions.filter(q => selectedEras.includes(q.era));
-      document.getElementById('current-mode').textContent = selectedEras.length === document.querySelectorAll('#era-checkboxes input').length ? "全時代" : `${selectedEras.length}時代選択`;
+      currentSessionQuestions = allQuestions.filter(q => selectedCats.includes(q.category));
+      document.getElementById('current-mode').textContent = "ランダム出題";
     }
 
-    // シャッフル
     currentSessionQuestions.sort(() => Math.random() - 0.5);
 
     currentQuestionIndex = 0;
@@ -300,7 +335,7 @@
 
   function showQuestion() {
     const q = currentSessionQuestions[currentQuestionIndex];
-    document.getElementById('question-text').textContent = `【${q.era}】 ${q.question}`;
+    document.getElementById('question-text').textContent = `【${q.category}】 ${q.question}`;
     document.getElementById('answer-input').value = '';
     document.getElementById('answer-input').disabled = false;
     document.getElementById('submit-btn').classList.remove('hidden');
@@ -320,7 +355,7 @@
     document.getElementById('progress').textContent = `${currentQuestionIndex + 1}/${currentSessionQuestions.length}`;
   }
 
-  // 解答処理
+  // 解答判定処理
   document.getElementById('answer-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const input = document.getElementById('answer-input').value.trim();
@@ -330,25 +365,24 @@
     document.getElementById('answer-input').disabled = true;
     document.getElementById('submit-btn').classList.add('hidden');
 
-    // 完全一致判定（空白除去）
-    if (input.replaceAll(' ', '') === q.answer.replaceAll(' ', '')) {
+    // 英大文字・小文字を区別せず、スペースも無視して比較
+    const cleanInput = input.toLowerCase().replaceAll(' ', '');
+    const cleanAnswer = q.answer.toLowerCase().replaceAll(' ', '');
+
+    if (cleanInput === cleanAnswer) {
       correctCount++;
       feedback.textContent = "正解！⭕";
       feedback.className = "feedback correct";
-      
-      // 復習リストから削除（あれば）
       wrongQuestions = wrongQuestions.filter(item => item.id !== q.id);
     } else {
       feedback.textContent = `不正解…❌ (正解: ${q.answer})`;
       feedback.className = "feedback incorrect";
-      
-      // 復習リストに追加（重複防ぐ）
       if (!wrongQuestions.some(item => item.id === q.id)) {
         wrongQuestions.push(q);
       }
     }
 
-    localStorage.setItem('wrongQuestions', JSON.stringify(wrongQuestions));
+    localStorage.setItem(`wrongQuestions_${currentSubjectKey}`, JSON.stringify(wrongQuestions));
     updateReviewBtn();
 
     if (currentQuestionIndex + 1 < currentSessionQuestions.length) {
@@ -356,7 +390,7 @@
     } else {
       setTimeout(() => {
         alert(`お疲れ様でした！最終正答率: ${Math.round((correctCount / currentSessionQuestions.length) * 100)}%`);
-        goBack();
+        goSetup();
       }, 500);
     }
   });
@@ -366,12 +400,17 @@
     showQuestion();
   });
 
-  document.getElementById('back-btn').addEventListener('click', goBack);
+  document.getElementById('back-setup-btn').addEventListener('click', goSetup);
 
-  function goBack() {
+  function goSetup() {
     document.getElementById('quiz-screen').classList.add('hidden');
     document.getElementById('setup-screen').classList.remove('hidden');
     updateReviewBtn();
+  }
+
+  function goHome() {
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('home-screen').classList.remove('hidden');
   }
 </script>
 </body>

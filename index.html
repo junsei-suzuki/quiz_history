@@ -149,6 +149,8 @@
       font-weight: bold;
       text-align: center;
       display: none;
+      position: relative;
+      overflow: hidden;
     }
 
     .feedback.correct {
@@ -161,6 +163,28 @@
       background-color: #f8d7da;
       color: var(--danger);
       display: block;
+    }
+
+    /* 2秒間のカウントダウン進行バー */
+    .timer-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      width: 100%;
+      background-color: rgba(0, 0, 0, 0.15);
+    }
+
+    .timer-progress {
+      height: 100%;
+      width: 100%;
+      background-color: currentColor;
+      animation: countdown 2s linear forwards;
+    }
+
+    @keyframes countdown {
+      from { width: 100%; }
+      to { width: 0%; }
     }
 
     .hidden { display: none; }
@@ -179,7 +203,7 @@
       <button class="subject-btn" onclick="selectSubject('math', '数学', '分野')">📐 数学</button>
       <button class="subject-btn" onclick="selectSubject('science', '理科', '分野')">🧪 理科</button>
       <button class="subject-btn" onclick="selectSubject('geography', '地理', '地方・分野')">🌍 地理</button>
-      <button class="subject-btn" onclick="selectSubject('english', '英語', 'ジャンル', true)" style="grid-column: span 2;">英 単語・文法</button>
+      <button class="subject-btn" onclick="selectSubject('english', '英語', 'ジャンル')" style="grid-column: span 2;">🔤 英単語・文法</button>
     </div>
   </div>
 
@@ -220,7 +244,6 @@
     </form>
 
     <div id="feedback" class="feedback"></div>
-    <button id="next-btn" class="hidden" style="margin-top: 10px;">次の問題へ</button>
     <button id="back-setup-btn" style="background-color: #6c757d; margin-top: 10px;">分野選択に戻る</button>
   </div>
 </div>
@@ -233,6 +256,7 @@
   let currentQuestionIndex = 0;
   let correctCount = 0;
   let wrongQuestions = [];
+  let autoNextTimer = null; // 自動遷移タイマー用
 
   // 教科を選択した時の処理
   function selectSubject(key, name, labelText) {
@@ -242,10 +266,8 @@
     document.getElementById('subject-title').textContent = `${name} 一問一答`;
     document.getElementById('category-label').textContent = `出題する${labelText}を選択（複数可）:`;
 
-    // ストレージから各教科の復習リストを取得
     wrongQuestions = JSON.parse(localStorage.getItem(`wrongQuestions_${key}`) || '[]');
 
-    // 該当教科のJSONファイルを読み込む
     fetch(`${key}.json`)
       .then(response => {
         if (!response.ok) throw new Error();
@@ -257,7 +279,7 @@
         document.getElementById('home-screen').classList.add('hidden');
         document.getElementById('setup-screen').classList.remove('hidden');
       })
-      .catch(err => alert(`${name}のデータ (${key}.json) の読み込みに失敗しました。ファイルが存在するか確認してください。`));
+      .catch(err => alert(`${name}のデータ (${key}.json) の読み込みに失敗しました。`));
   }
 
   function initSetupScreen() {
@@ -334,16 +356,17 @@
   }
 
   function showQuestion() {
+    clearTimeout(autoNextTimer); // 前のタイマーがあれば解除
+
     const q = currentSessionQuestions[currentQuestionIndex];
     document.getElementById('question-text').textContent = `【${q.category}】 ${q.question}`;
     document.getElementById('answer-input').value = '';
     document.getElementById('answer-input').disabled = false;
     document.getElementById('submit-btn').classList.remove('hidden');
-    document.getElementById('next-btn').classList.add('hidden');
     
     const feedback = document.getElementById('feedback');
     feedback.className = 'feedback';
-    feedback.textContent = '';
+    feedback.innerHTML = '';
 
     updateStats();
   }
@@ -355,7 +378,7 @@
     document.getElementById('progress').textContent = `${currentQuestionIndex + 1}/${currentSessionQuestions.length}`;
   }
 
-  // 解答判定処理
+  // 自動遷移機能付きの解答判定処理
   document.getElementById('answer-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const input = document.getElementById('answer-input').value.trim();
@@ -365,50 +388,56 @@
     document.getElementById('answer-input').disabled = true;
     document.getElementById('submit-btn').classList.add('hidden');
 
-    // 英大文字・小文字を区別せず、スペースも無視して比較
     const cleanInput = input.toLowerCase().replaceAll(' ', '');
     const cleanAnswer = q.answer.toLowerCase().replaceAll(' ', '');
 
+    // フィードバック表示とゲージ（進行バー）の準備
+    let resultMessage = "";
     if (cleanInput === cleanAnswer) {
       correctCount++;
-      feedback.textContent = "正解！⭕";
+      resultMessage = "正解！⭕";
       feedback.className = "feedback correct";
       wrongQuestions = wrongQuestions.filter(item => item.id !== q.id);
     } else {
-      feedback.textContent = `不正解…❌ (正解: ${q.answer})`;
+      resultMessage = `不正解…❌ (正解: ${q.answer})`;
       feedback.className = "feedback incorrect";
       if (!wrongQuestions.some(item => item.id === q.id)) {
         wrongQuestions.push(q);
       }
     }
 
+    // 2秒アニメーション用バーの追加
+    feedback.innerHTML = `${resultMessage}<div class="timer-bar"><div class="timer-progress"></div></div>`;
+
     localStorage.setItem(`wrongQuestions_${currentSubjectKey}`, JSON.stringify(wrongQuestions));
     updateReviewBtn();
 
-    if (currentQuestionIndex + 1 < currentSessionQuestions.length) {
-      document.getElementById('next-btn').classList.remove('hidden');
-    } else {
-      setTimeout(() => {
+    // 2秒後（2000ミリ秒後）に自動で遷移
+    autoNextTimer = setTimeout(() => {
+      if (currentQuestionIndex + 1 < currentSessionQuestions.length) {
+        currentQuestionIndex++;
+        showQuestion();
+      } else {
         alert(`お疲れ様でした！最終正答率: ${Math.round((correctCount / currentSessionQuestions.length) * 100)}%`);
         goSetup();
-      }, 500);
-    }
+      }
+    }, 2000);
   });
 
-  document.getElementById('next-btn').addEventListener('click', () => {
-    currentQuestionIndex++;
-    showQuestion();
+  document.getElementById('back-setup-btn').addEventListener('click', () => {
+    clearTimeout(autoNextTimer);
+    goSetup();
   });
-
-  document.getElementById('back-setup-btn').addEventListener('click', goSetup);
 
   function goSetup() {
+    clearTimeout(autoNextTimer);
     document.getElementById('quiz-screen').classList.add('hidden');
     document.getElementById('setup-screen').classList.remove('hidden');
     updateReviewBtn();
   }
 
   function goHome() {
+    clearTimeout(autoNextTimer);
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('home-screen').classList.remove('hidden');
   }

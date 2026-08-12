@@ -688,7 +688,7 @@
       damage.classList.add('active');
 
       if (enemyHp <= 0) {
-        enemy.classList.add('defeated'); // 敵撃破
+        enemy.classList.add('defeated'); // 敵撃破演出
       } else {
         enemy.classList.add('shake');
       }
@@ -720,9 +720,16 @@
       feedback.innerHTML = `正解！⭕ (${answerTimeSec.toFixed(1)}秒)<div class="timer-bar"><div class="timer-progress"></div></div>`;
       wrongQuestions = wrongQuestions.filter(item => item.id !== q.id);
 
-      autoNextTimer = setTimeout(() => {
-        nextQuestion();
-      }, 1500);
+      // 💥 ボス撃破判定（HPが0になったら即座にクリア演出へ）
+      if (enemyHp <= 0) {
+        autoNextTimer = setTimeout(() => {
+          finishQuiz();
+        }, 1500); // 撃破アニメーションを見せるため少し長めの余韻
+      } else {
+        autoNextTimer = setTimeout(() => {
+          nextQuestion();
+        }, 1500);
+      }
 
     } else {
       // --- 不正解時 ---
@@ -747,25 +754,29 @@
       currentQuestionIndex++;
       showQuestion();
     } else {
-      // 🏆 全問終了時のリザルト表示
-      const totalQ = currentSessionQuestions.length;
-      const accuracyRate = Math.round((correctCount / totalQ) * 100);
-      const isDefeated = enemyHp <= 0;
-      
-      const titleMsg = isDefeated ? "🎉 敵を撃破しました！お見事！" : "💪 撃破ならず…！次回リベンジしよう！";
-
-      const summaryText = 
-        `${titleMsg}\n\n` +
-        `-------------------------\n` +
-        `【学習リザルト】\n` +
-        `・正答数: ${correctCount} / ${totalQ} 問\n` +
-        `・正答率: ${accuracyRate}%\n` +
-        `・最大コンボ: ${maxComboCount} COMBO🔥\n` +
-        `-------------------------`;
-
-      alert(summaryText);
-      goSetup();
+      finishQuiz();
     }
+  }
+
+  // 🏆 学習セッション終了処理（全問終了または撃破時）
+  function finishQuiz() {
+    const totalQ = currentQuestionIndex + 1; // 実際に解いた問題数
+    const accuracyRate = Math.round((correctCount / totalQ) * 100);
+    const isDefeated = enemyHp <= 0;
+    
+    const titleMsg = isDefeated ? "🎉 敵を撃破しました！お見事！" : "💪 撃破ならず…！次回リベンジしよう！";
+
+    const summaryText = 
+      `${titleMsg}\n\n` +
+      `-------------------------\n` +
+      `【学習リザルト】\n` +
+      `・正答数: ${correctCount} / ${totalQ} 問 (挑戦問題数)\n` +
+      `・正答率: ${accuracyRate}%\n` +
+      `・最大コンボ: ${maxComboCount} COMBO🔥\n` +
+      `-------------------------`;
+
+    alert(summaryText);
+    goSetup();
   }
 
   document.getElementById('next-btn').addEventListener('click', nextQuestion);

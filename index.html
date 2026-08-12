@@ -361,6 +361,19 @@
       to { width: 0%; }
     }
 
+    /* ⏩ スキップボタンのスタイル */
+    .skip-btn {
+      margin-top: 8px;
+      padding: 6px 16px;
+      font-size: 0.85rem;
+      background-color: var(--success);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
     .hidden { display: none; }
   </style>
 </head>
@@ -717,7 +730,12 @@
 
       correctCount++;
       feedback.className = "feedback correct";
-      feedback.innerHTML = `正解！⭕ (${answerTimeSec.toFixed(1)}秒)<div class="timer-bar"><div class="timer-progress"></div></div>`;
+      feedback.innerHTML = `
+        正解！⭕ (${answerTimeSec.toFixed(1)}秒)
+        <br>
+        <button class="skip-btn" onclick="skipTimer()">次へ進む ⏩</button>
+        <div class="timer-bar"><div class="timer-progress"></div></div>
+      `;
       wrongQuestions = wrongQuestions.filter(item => item.id !== q.id);
 
       // 💥 ボス撃破判定（HPが0になったら即座にクリア演出へ）
@@ -748,6 +766,16 @@
     localStorage.setItem(`wrongQuestions_${currentSubjectKey}`, JSON.stringify(wrongQuestions));
     updateReviewBtn();
   });
+
+  // ⏩ タイマースキップ処理
+  function skipTimer() {
+    clearTimeout(autoNextTimer);
+    if (enemyHp <= 0) {
+      finishQuiz();
+    } else {
+      nextQuestion();
+    }
+  }
 
   function nextQuestion() {
     if (currentQuestionIndex + 1 < currentSessionQuestions.length) {

@@ -9,7 +9,7 @@
       --primary: #4a6fa5;
       --success: #28a745;
       --danger: #dc3545;
-      --bg: #f8f9fa;
+      --bg: #1e1e2f;
       --card-bg: #ffffff;
     }
     
@@ -29,7 +29,7 @@
       background: var(--card-bg);
       border-radius: 12px;
       padding: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
 
     h1, h2 {
@@ -122,22 +122,107 @@
 
     .stats {
       background: #eef2f7;
-      padding: 10px;
+      padding: 8px 10px;
       border-radius: 8px;
-      font-size: 0.9rem;
-      margin-bottom: 15px;
+      font-size: 0.85rem;
+      margin-bottom: 10px;
       display: flex;
       justify-content: space-around;
       text-align: center;
     }
 
+    /* -----------------------------------
+       🎮 パズドラ風 バトルステージ演出
+    ----------------------------------- */
+    .battle-stage {
+      position: relative;
+      height: 140px;
+      background: linear-gradient(to bottom, #2b1055, #7597de);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    }
+
+    /* 敵キャラクター */
+    .enemy {
+      font-size: 4rem;
+      transition: transform 0.1s;
+      user-select: none;
+    }
+
+    /* ダメージを受けた時の敵の横揺れ */
+    .enemy.shake {
+      animation: enemy-shake 0.4s ease-in-out;
+    }
+
+    @keyframes enemy-shake {
+      0% { transform: translate(0, 0) scale(1); }
+      20% { transform: translate(-15px, 0) scale(0.9); filter: brightness(2) drop-shadow(0 0 10px red); }
+      40% { transform: translate(15px, 0) scale(0.9); filter: brightness(2) drop-shadow(0 0 10px red); }
+      60% { transform: translate(-10px, 0) scale(0.95); }
+      80% { transform: translate(10px, 0) scale(0.95); }
+      100% { transform: translate(0, 0) scale(1); }
+    }
+
+    /* 攻撃スラッシュ（閃光エフェクト） */
+    .slash-effect {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 6px;
+      background: #ffffff;
+      box-shadow: 0 0 15px #00ffff, 0 0 30px #ffffff;
+      transform: translate(-50%, -50%) rotate(-45deg);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .slash-effect.active {
+      animation: slash 0.3s ease-out;
+    }
+
+    @keyframes slash {
+      0% { width: 0; opacity: 1; }
+      50% { width: 120%; opacity: 1; }
+      100% { width: 140%; opacity: 0; }
+    }
+
+    /* ダメージ数字ポップアップ */
+    .damage-num {
+      position: absolute;
+      top: 25%;
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #ffea00;
+      text-shadow: 3px 3px 0 #000, -2px -2px 0 #000;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .damage-num.active {
+      animation: pop-damage 0.8s ease-out;
+    }
+
+    @keyframes pop-damage {
+      0% { transform: scale(0.3) translateY(20px); opacity: 1; }
+      50% { transform: scale(1.3) translateY(-10px); opacity: 1; }
+      100% { transform: scale(1) translateY(-30px); opacity: 0; }
+    }
+
+    /* ----------------------------------- */
+
     .question-card {
       background: #f1f3f5;
       padding: 15px;
       border-radius: 8px;
-      min-height: 80px;
-      font-size: 1.1rem;
-      margin-bottom: 15px;
+      min-height: 60px;
+      font-size: 1rem;
+      margin-bottom: 12px;
       display: flex;
       align-items: center;
     }
@@ -165,7 +250,6 @@
       display: block;
     }
 
-    /* 正解時の1.5秒カウントダウン進行バー */
     .timer-bar {
       position: absolute;
       bottom: 0;
@@ -226,12 +310,19 @@
     <button onclick="goHome()" style="background-color: #888; margin-top: 5px;">ホームに戻る</button>
   </div>
 
-  <!-- 3. クイズ画面 -->
+  <!-- 3. クイズ画面（ゲーム演出付き） -->
   <div id="quiz-screen" class="hidden">
     <div class="stats">
       <div>モード: <span id="current-mode"></span></div>
       <div>正答率: <span id="accuracy">0%</span></div>
       <div>解いた数: <span id="progress">0/0</span></div>
+    </div>
+
+    <!-- 🎮 パズドラ風 バトル画面 -->
+    <div class="battle-stage">
+      <div id="enemy" class="enemy">🐲</div>
+      <div id="slash" class="slash-effect"></div>
+      <div id="damage" class="damage-num">9999!</div>
     </div>
 
     <div class="question-card" id="question-text">
@@ -257,9 +348,11 @@
   let currentQuestionIndex = 0;
   let correctCount = 0;
   let wrongQuestions = [];
-  let autoNextTimer = null; // 自動遷移タイマー用
+  let autoNextTimer = null;
 
-  // 教科を選択した時の処理
+  // 敵モンスターのバリエーション
+  const enemies = ['🐲', '👾', '👹', '💀', '🤖', '㏘', '👻', '🦁'];
+
   function selectSubject(key, name, labelText) {
     currentSubjectKey = key;
     currentSubjectName = name;
@@ -357,14 +450,20 @@
   }
 
   function showQuestion() {
-    clearTimeout(autoNextTimer); // 前のタイマーがあれば解除
+    clearTimeout(autoNextTimer);
+
+    // 問題ごとにランダムな敵を表示
+    const randomEnemy = enemies[Math.floor(Math.random() * enemies.length)];
+    const enemyEl = document.getElementById('enemy');
+    enemyEl.textContent = randomEnemy;
+    enemyEl.className = 'enemy'; // クラスリセット
 
     const q = currentSessionQuestions[currentQuestionIndex];
     document.getElementById('question-text').textContent = `【${q.category}】 ${q.question}`;
     document.getElementById('answer-input').value = '';
     document.getElementById('answer-input').disabled = false;
     document.getElementById('submit-btn').classList.remove('hidden');
-    document.getElementById('next-btn').classList.add('hidden'); // 「次の問題へ」を非表示にリセット
+    document.getElementById('next-btn').classList.add('hidden');
     
     const feedback = document.getElementById('feedback');
     feedback.className = 'feedback';
@@ -380,7 +479,30 @@
     document.getElementById('progress').textContent = `${currentQuestionIndex + 1}/${currentSessionQuestions.length}`;
   }
 
-  // 解答判定処理（正解: 1.5秒自動 / 不正解: ボタン表示）
+  // 🎮 攻撃アニメーションの発動処理
+  function triggerAttackEffect() {
+    const enemy = document.getElementById('enemy');
+    const slash = document.getElementById('slash');
+    const damage = document.getElementById('damage');
+
+    // クラスを一度消して再適用（アニメーションの再発動）
+    enemy.classList.remove('shake');
+    slash.classList.remove('active');
+    damage.classList.remove('active');
+
+    // ランダムなダメージ数値を生成（例: 5200 〜 9999）
+    const dmgVal = Math.floor(Math.random() * 4800) + 5200;
+    damage.textContent = `${dmgVal}!`;
+
+    // わずかな遅延を入れてアニメーション再生
+    setTimeout(() => {
+      slash.classList.add('active');
+      enemy.classList.add('shake');
+      damage.classList.add('active');
+    }, 10);
+  }
+
+  // 解答判定処理
   document.getElementById('answer-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const input = document.getElementById('answer-input').value.trim();
@@ -394,26 +516,26 @@
     const cleanAnswer = q.answer.toLowerCase().replaceAll(' ', '');
 
     if (cleanInput === cleanAnswer) {
-      // --- 正解の処理 ---
+      // --- 正解時：攻撃演出発動 ---
+      triggerAttackEffect();
+
       correctCount++;
       feedback.className = "feedback correct";
-      feedback.innerHTML = `正解！⭕<div class="timer-bar"><div class="timer-progress"></div></div>`;
+      feedback.innerHTML = `正解！⭕ クリティカル攻撃！<div class="timer-bar"><div class="timer-progress"></div></div>`;
       wrongQuestions = wrongQuestions.filter(item => item.id !== q.id);
 
-      // 1.5秒後に自動で次へ
       autoNextTimer = setTimeout(() => {
         nextQuestion();
       }, 1500);
 
     } else {
-      // --- 不正解の処理 ---
+      // --- 不正解時 ---
       feedback.className = "feedback incorrect";
       feedback.textContent = `不正解…❌ (正解: ${q.answer})`;
       if (!wrongQuestions.some(item => item.id === q.id)) {
         wrongQuestions.push(q);
       }
 
-      // 「次の問題へ」ボタンを表示（手動で進む）
       document.getElementById('next-btn').classList.remove('hidden');
     }
 
@@ -421,13 +543,12 @@
     updateReviewBtn();
   });
 
-  // 次の問題（または終了判定）へ進む共通処理
   function nextQuestion() {
     if (currentQuestionIndex + 1 < currentSessionQuestions.length) {
       currentQuestionIndex++;
       showQuestion();
     } else {
-      alert(`お疲れ様でした！最終正答率: ${Math.round((correctCount / currentSessionQuestions.length) * 100)}%`);
+      alert(`ダンジョンクリア！最終正答率: ${Math.round((correctCount / currentSessionQuestions.length) * 100)}%`);
       goSetup();
     }
   }

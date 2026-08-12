@@ -136,22 +136,43 @@
     ----------------------------------- */
     .battle-stage {
       position: relative;
-      height: 140px;
-      background: linear-gradient(to bottom, #2b1055, #7597de);
+      height: 160px;
+      background: linear-gradient(to bottom, #110926, #3a4768);
       border-radius: 10px;
       margin-bottom: 10px;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       overflow: hidden;
       box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
     }
 
+    /* HPゲージ */
+    .hp-container {
+      position: absolute;
+      top: 10px;
+      width: 80%;
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid #fff;
+      border-radius: 10px;
+      height: 16px;
+      overflow: hidden;
+    }
+
+    .hp-bar {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(to right, #28a745, #85e085);
+      transition: width 0.4s ease-out;
+    }
+
     /* 敵キャラクター */
     .enemy {
-      font-size: 4rem;
-      transition: transform 0.1s;
+      font-size: 4.5rem;
+      transition: transform 0.1s, opacity 0.5s;
       user-select: none;
+      margin-top: 15px;
     }
 
     /* ダメージを受けた時の敵の横揺れ */
@@ -168,10 +189,21 @@
       100% { transform: translate(0, 0) scale(1); }
     }
 
-    /* 攻撃スラッシュ（閃光エフェクト） */
+    /* 敵撃破時のフェードアウト */
+    .enemy.defeated {
+      animation: enemy-defeated 0.8s forwards;
+    }
+
+    @keyframes enemy-defeated {
+      0% { transform: scale(1); filter: brightness(3); }
+      50% { transform: scale(1.2) rotate(10deg); filter: brightness(5) drop-shadow(0 0 20px red); opacity: 0.8; }
+      100% { transform: scale(0); opacity: 0; }
+    }
+
+    /* 攻撃スラッシュ */
     .slash-effect {
       position: absolute;
-      top: 50%;
+      top: 55%;
       left: 50%;
       width: 0;
       height: 6px;
@@ -202,6 +234,12 @@
       text-shadow: 3px 3px 0 #000, -2px -2px 0 #000;
       opacity: 0;
       pointer-events: none;
+      text-align: center;
+    }
+
+    .damage-num.critical {
+      color: #ff3366;
+      font-size: 2.6rem;
     }
 
     .damage-num.active {
@@ -210,7 +248,7 @@
 
     @keyframes pop-damage {
       0% { transform: scale(0.3) translateY(20px); opacity: 1; }
-      50% { transform: scale(1.3) translateY(-10px); opacity: 1; }
+      50% { transform: scale(1.2) translateY(-10px); opacity: 1; }
       100% { transform: scale(1) translateY(-30px); opacity: 0; }
     }
 
@@ -320,6 +358,9 @@
 
     <!-- 🎮 パズドラ風 バトル画面 -->
     <div class="battle-stage">
+      <div class="hp-container">
+        <div id="hp-bar" class="hp-bar"></div>
+      </div>
       <div id="enemy" class="enemy">🐲</div>
       <div id="slash" class="slash-effect"></div>
       <div id="damage" class="damage-num">9999!</div>
@@ -350,8 +391,60 @@
   let wrongQuestions = [];
   let autoNextTimer = null;
 
-  // 敵モンスターのバリエーション
-  const enemies = ['🐲', '👾', '👹', '💀', '🤖', '㏘', '👻', '🦁'];
+  // 🎮 ゲーム用変数
+  let questionStartTime = 0;
+  let enemyHp = 100;
+  let baseDamagePerQuestion = 0;
+
+  // カテゴリーごとの固定モンスターマップ
+  const categoryEnemies = {
+    // 歴史
+    '旧石器・縄文・弥生': '🦴',
+    '飛鳥・奈良': '🏛️',
+    '平安': '⛩️',
+    '鎌倉・室町': '⚔️',
+    '安土桃山・江戸': '🏯',
+    '明治・大正': '🎩',
+    '昭和・現代': '🏙️',
+    
+    // 数学
+    '計算・方程式': '🔢',
+    '関数': '📈',
+    '図形': '📐',
+    '確率・データ': '🎲',
+
+    // 理科
+    '物理（光・音・力・電気）': '⚡',
+    '化学（状態変化・水溶液・化学変化）': '🧪',
+    '生物（植物・動物・細胞）': '🧫',
+    '地学（火山・地震・天気・天体）': '🌋',
+
+    // 地理
+    '日本の姿・都道府県': '🗾',
+    '世界地理': '🌍',
+    '日本の諸地域': '🏞️',
+
+    // 英語
+    '単語（名詞・動詞・形容詞）': '🔤',
+    '文法（時制・助動詞・不定詞など）': '📘',
+    '会話表現・熟語': '💬'
+  };
+
+  // 未登録カテゴリー用のフォールバックリスト
+  const fallbackEnemies = ['🐲', '👾', '👹', '💀', '🤖', '👻', '🦁', 'ガ'];
+
+  function getEnemyForCategory(category) {
+    if (categoryEnemies[category]) {
+      return categoryEnemies[category];
+    }
+    // 文字列ハッシュで常に同じ絵柄を返す
+    let hash = 0;
+    for (let i = 0; i < category.length; i++) {
+      hash = category.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % fallbackEnemies.length;
+    return fallbackEnemies[index];
+  }
 
   function selectSubject(key, name, labelText) {
     currentSubjectKey = key;
@@ -443,6 +536,13 @@
 
     currentQuestionIndex = 0;
     correctCount = 0;
+    enemyHp = 100; // HP満タン(100%)からスタート
+
+    // 🎯 1問題あたりの基準攻撃力を計算（「約2秒で解答」した時、全問正解でちょうど100%削れる値）
+    const totalQ = currentSessionQuestions.length;
+    baseDamagePerQuestion = totalQ > 0 ? (100 / totalQ) : 100;
+
+    updateHpBar();
 
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('quiz-screen').classList.remove('hidden');
@@ -452,13 +552,13 @@
   function showQuestion() {
     clearTimeout(autoNextTimer);
 
-    // 問題ごとにランダムな敵を表示
-    const randomEnemy = enemies[Math.floor(Math.random() * enemies.length)];
-    const enemyEl = document.getElementById('enemy');
-    enemyEl.textContent = randomEnemy;
-    enemyEl.className = 'enemy'; // クラスリセット
-
     const q = currentSessionQuestions[currentQuestionIndex];
+
+    // カテゴリーごとに固定の敵画像を表示
+    const enemyEl = document.getElementById('enemy');
+    enemyEl.textContent = getEnemyForCategory(q.category);
+    enemyEl.className = 'enemy'; // スタイルリセット
+
     document.getElementById('question-text').textContent = `【${q.category}】 ${q.question}`;
     document.getElementById('answer-input').value = '';
     document.getElementById('answer-input').disabled = false;
@@ -470,6 +570,9 @@
     feedback.innerHTML = '';
 
     updateStats();
+
+    // ⏱️ 出題された瞬間のタイムを記録
+    questionStartTime = Date.now();
   }
 
   function updateStats() {
@@ -479,26 +582,66 @@
     document.getElementById('progress').textContent = `${currentQuestionIndex + 1}/${currentSessionQuestions.length}`;
   }
 
-  // 🎮 攻撃アニメーションの発動処理
-  function triggerAttackEffect() {
+  function updateHpBar() {
+    const hpBar = document.getElementById('hp-bar');
+    hpBar.style.width = `${Math.max(0, enemyHp)}%`;
+
+    if (enemyHp <= 30) {
+      hpBar.style.background = 'linear-gradient(to right, #dc3545, #ff6b6b)'; // 瀕死で赤く
+    } else {
+      hpBar.style.background = 'linear-gradient(to right, #28a745, #85e085)';
+    }
+  }
+
+  // 🎮 攻撃アニメーション＆ダメージ判定処理
+  function triggerAttackEffect(timeSec) {
     const enemy = document.getElementById('enemy');
     const slash = document.getElementById('slash');
     const damage = document.getElementById('damage');
 
-    // クラスを一度消して再適用（アニメーションの再発動）
-    enemy.classList.remove('shake');
+    // 倍率判定（2秒以内なら100%削れるペース）
+    let multiplier = 1.0;
+    let label = '';
+    
+    if (timeSec <= 1.5) {
+      multiplier = 1.3; // 超高速：1.3倍
+      label = 'CRITICAL! ';
+      damage.className = 'damage-num critical';
+    } else if (timeSec <= 2.2) {
+      multiplier = 1.0; // 2秒前後：標準
+      label = 'GREAT! ';
+      damage.className = 'damage-num';
+    } else {
+      multiplier = 0.6; // 遅め：0.6倍
+      label = 'GOOD ';
+      damage.className = 'damage-num';
+    }
+
+    // ダメージ計算（HP割合から換算）
+    const damagePercent = baseDamagePerQuestion * multiplier;
+    enemyHp -= damagePercent;
+    if (enemyHp < 0) enemyHp = 0;
+
+    updateHpBar();
+
+    // 表示用数値（画面上は見栄えよく大数で表示）
+    const displayDamage = Math.round(damagePercent * 100);
+    damage.textContent = `${label}${displayDamage}`;
+
+    // アニメーションのリセット＆発動
+    enemy.classList.remove('shake', 'defeated');
     slash.classList.remove('active');
     damage.classList.remove('active');
 
-    // ランダムなダメージ数値を生成（例: 5200 〜 9999）
-    const dmgVal = Math.floor(Math.random() * 4800) + 5200;
-    damage.textContent = `${dmgVal}!`;
-
-    // わずかな遅延を入れてアニメーション再生
     setTimeout(() => {
       slash.classList.add('active');
-      enemy.classList.add('shake');
       damage.classList.add('active');
+
+      if (enemyHp <= 0) {
+        enemy.classList.add('defeated'); // 敵撃破！
+      } else {
+        enemy.classList.add('shake');
+      }
     }, 10);
   }
 
@@ -509,6 +652,9 @@
     const q = currentSessionQuestions[currentQuestionIndex];
     const feedback = document.getElementById('feedback');
 
+    // ⏱️ 解答にかかった時間（秒）を計算
+    const answerTimeSec = (Date.now() - questionStartTime) / 1000;
+
     document.getElementById('answer-input').disabled = true;
     document.getElementById('submit-btn').classList.add('hidden');
 
@@ -516,12 +662,12 @@
     const cleanAnswer = q.answer.toLowerCase().replaceAll(' ', '');
 
     if (cleanInput === cleanAnswer) {
-      // --- 正解時：攻撃演出発動 ---
-      triggerAttackEffect();
+      // --- 正解時 ---
+      triggerAttackEffect(answerTimeSec);
 
       correctCount++;
       feedback.className = "feedback correct";
-      feedback.innerHTML = `正解！⭕ クリティカル攻撃！<div class="timer-bar"><div class="timer-progress"></div></div>`;
+      feedback.innerHTML = `正解！⭕ (${answerTimeSec.toFixed(1)}秒)<div class="timer-bar"><div class="timer-progress"></div></div>`;
       wrongQuestions = wrongQuestions.filter(item => item.id !== q.id);
 
       autoNextTimer = setTimeout(() => {
@@ -548,7 +694,9 @@
       currentQuestionIndex++;
       showQuestion();
     } else {
-      alert(`ダンジョンクリア！最終正答率: ${Math.round((correctCount / currentSessionQuestions.length) * 100)}%`);
+      const isDefeated = enemyHp <= 0;
+      const resultMsg = isDefeated ? "🎉 敵を撃破しました！お見事！" : "💪 撃破ならず…次はもっと早く答えてみよう！";
+      alert(`${resultMsg}\n最終正答率: ${Math.round((correctCount / currentSessionQuestions.length) * 100)}%`);
       goSetup();
     }
   }

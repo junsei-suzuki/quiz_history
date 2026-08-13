@@ -3,49 +3,67 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>一問一答ポータル</title>
+  <title>一問一答ポータル - 戦国合戦Ver.</title>
   <style>
     :root {
-      --primary: #4a6fa5;
+      --primary: #8b0000; /* 漆黒・深紅 */
       --success: #28a745;
       --danger: #dc3545;
-      --bg: #0d0614;
-      --card-bg: rgba(255, 255, 255, 0.92);
+      --bg: #120c0a;
+      --card-bg: rgba(25, 20, 20, 0.88);
     }
     
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: "Hiragino Mincho ProN", "Yu Mincho", -apple-system, BlinkMacSystemFont, serif;
       background-color: var(--bg);
-      color: #333;
+      /* ⚔️ 戦国荒野風の背景（赤黒い雲・荒涼とした大地イメージ） */
+      background: 
+        radial-gradient(circle at 50% 30%, rgba(139, 0, 0, 0.3) 0%, transparent 70%),
+        linear-gradient(to bottom, #1a0f0d 0%, #0d0806 60%, #050302 100%);
+      color: #eaeaea;
       margin: 0;
       padding: 15px;
       display: flex;
-      justify-content: center;
-      align-items: flex-end; /* 🎯 画面下寄りに配置 */
+      flex-direction: column;
+      justify-content: flex-end; /* 🎯 全体を下寄りに配置 */
+      align-items: center;
       min-height: 100vh;
       box-sizing: border-box;
       overflow-x: hidden;
+      position: relative;
     }
 
-    /* 🎯 問題カードなどのアプリ枠：下側に配置 */
+    /* 戦国の荒野：火の粉や霞の演出用オーバーレイ */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: radial-gradient(circle at 50% 100%, rgba(255, 68, 0, 0.08) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* 🎯 アプリメイン容器（画面中央～下部に配置） */
     .app-container {
       width: 100%;
       max-width: 500px;
       background: var(--card-bg);
+      border: 1px solid #5a3825;
       border-radius: 12px;
       padding: 20px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(139, 0, 0, 0.3);
       position: relative;
       z-index: 10;
-      backdrop-filter: blur(8px);
-      margin-bottom: 20px; /* 下部に少し余白を確保 */
-      margin-top: 160px;   /* 🎯 上部に余白を作り、ボスの顔を見せるスペースを確保 */
+      backdrop-filter: blur(10px);
+      margin-bottom: 20px;
+      box-sizing: border-box;
     }
 
     h1, h2 {
       text-align: center;
       margin-top: 0;
-      color: var(--primary);
+      color: #f3a852;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     }
 
     h1 { font-size: 1.4rem; }
@@ -55,23 +73,29 @@
       width: 100%;
       padding: 12px;
       margin-bottom: 12px;
-      border: 1px solid #ccc;
+      border: 1px solid #664433;
       border-radius: 8px;
       font-size: 1rem;
       box-sizing: border-box;
+      background: #2a1f1b;
+      color: #fff;
     }
 
     button {
-      background-color: var(--primary);
-      color: white;
-      border: none;
+      background: linear-gradient(180deg, #8b1a1a 0%, #5c0e0e 100%);
+      color: #ffe6d0;
+      border: 1px solid #a33232;
       font-weight: bold;
       cursor: pointer;
+      text-shadow: 0 1px 2px #000;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
 
-    button:active { opacity: 0.9; }
+    button:active { opacity: 0.9; transform: translateY(1px); }
     button:disabled {
-      background-color: #cccccc !important;
+      background: #443833 !important;
+      border-color: #554842 !important;
+      color: #887770 !important;
       cursor: not-allowed;
     }
 
@@ -86,16 +110,17 @@
     .subject-btn {
       padding: 20px 10px;
       font-size: 1.1rem;
-      background-color: #eef2f7;
-      color: #333;
-      border: 2px solid var(--primary);
+      background: linear-gradient(180deg, #3a2a24 0%, #241915 100%);
+      color: #f0e0d0;
+      border: 1px solid #775544;
       margin-bottom: 0;
     }
 
     /* 分野・カテゴリチェックボックス */
     .category-group {
-      background: #f1f3f5;
+      background: rgba(0, 0, 0, 0.4);
       padding: 15px;
+      border: 1px solid #443028;
       border-radius: 8px;
       margin-bottom: 15px;
       max-height: 200px;
@@ -108,6 +133,7 @@
       margin-bottom: 10px;
       font-size: 1rem;
       cursor: pointer;
+      color: #ddd;
     }
 
     .category-item input[type="checkbox"] {
@@ -126,85 +152,77 @@
     .select-tools button {
       padding: 6px 12px;
       font-size: 0.85rem;
-      background-color: #6c757d;
+      background: #4a3b35;
+      border-color: #665248;
       margin-bottom: 0;
     }
 
     .stats {
-      background: rgba(238, 242, 247, 0.9);
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid #44332a;
       padding: 8px 10px;
       border-radius: 8px;
       font-size: 0.85rem;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       display: flex;
       justify-content: space-around;
       text-align: center;
+      color: #cca;
     }
 
     /* -----------------------------------
-       🌌 全画面バトルステージ演出
+       👹 画面上部中央：敵キャラ立ち絵エリア
     ----------------------------------- */
-    body.full-shake {
-      animation: screen-shake 0.35s ease-in-out;
-    }
-
-    @keyframes screen-shake {
-      0% { transform: translate(0, 0); }
-      20% { transform: translate(-12px, 8px) rotate(-1deg); }
-      40% { transform: translate(12px, -8px) rotate(1deg); }
-      60% { transform: translate(-8px, -4px); }
-      80% { transform: translate(8px, 4px); }
-      100% { transform: translate(0, 0); }
-    }
-
-    /* 全画面背景ボス画像 */
-    .bg-enemy-container {
+    .enemy-stage {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 1;
-      pointer-events: none;
-      overflow: hidden;
-    }
-
-    .bg-enemy-img {
+      top: 50px; /* HPゲージの直下に配置 */
+      left: 50%;
+      transform: translateX(-50%);
       width: 100%;
-      height: 100%;
-      object-fit: cover;
-      /* 🎯 顔部分（画像最上部）を画面上部にくっきり合わせる位置指定 */
-      object-position: center 5%;
-      opacity: 0.65;
-      filter: brightness(0.9) contrast(1.25);
-      transition: transform 0.1s, filter 0.3s, opacity 0.8s;
+      max-width: 500px;
+      height: 220px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 5;
+      pointer-events: none;
     }
 
-    /* ボスダメージ演出 */
-    .bg-enemy-img.shake {
-      animation: boss-hit 0.4s ease-in-out;
+    /* 小さめに配置された敵立ち絵 */
+    .enemy-sprite {
+      max-width: 180px;  /* 🎯 小さめのサイズ感 */
+      max-height: 180px;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 15px rgba(0,0,0,0.9)) drop-shadow(0 0 10px rgba(255, 0, 0, 0.3));
+      transition: transform 0.2s, filter 0.3s;
     }
 
-    @keyframes boss-hit {
-      0% { transform: scale(1); filter: brightness(0.9); }
-      20% { transform: scale(1.05) translate(-10px, 0); filter: brightness(2) drop-shadow(0 0 40px #00ffff); }
-      40% { transform: scale(1.05) translate(10px, 0); filter: brightness(2) drop-shadow(0 0 40px #ff0055); }
-      60% { transform: scale(1.02); filter: brightness(1.3); }
-      100% { transform: scale(1); filter: brightness(0.9); }
+    /* ダメージ時の立ち絵演出 */
+    .enemy-sprite.shake {
+      animation: enemy-hit 0.4s ease-in-out;
     }
 
-    /* 撃破時消滅 */
-    .bg-enemy-img.defeated {
-      animation: boss-defeated 1.2s forwards;
+    @keyframes enemy-hit {
+      0% { transform: scale(1); filter: brightness(1); }
+      20% { transform: scale(1.15) rotate(-5deg); filter: brightness(3) drop-shadow(0 0 30px #ff0055); }
+      40% { transform: scale(0.9) rotate(5deg); filter: brightness(2) drop-shadow(0 0 20px #00ffff); }
+      60% { transform: scale(1.05); }
+      100% { transform: scale(1); filter: brightness(1); }
     }
 
-    @keyframes boss-defeated {
-      0% { transform: scale(1); filter: brightness(3) drop-shadow(0 0 50px white); opacity: 0.8; }
-      50% { transform: scale(1.1); filter: brightness(5) drop-shadow(0 0 80px red); opacity: 0.5; }
-      100% { transform: scale(0.8); filter: brightness(10); opacity: 0; }
+    .enemy-sprite.defeated {
+      animation: enemy-defeated 1.2s forwards;
     }
 
-    /* 全画面固定 UI（HPゲージ＆コンボ） */
+    @keyframes enemy-defeated {
+      0% { transform: scale(1); opacity: 1; filter: brightness(5) drop-shadow(0 0 50px white); }
+      50% { transform: scale(1.2) translateY(-20px); opacity: 0.8; filter: brightness(10) drop-shadow(0 0 80px red); }
+      100% { transform: scale(0); translateY(50px); opacity: 0; }
+    }
+
+    /* -----------------------------------
+       🩸 画面上部固定 UI（HPバー）
+    ----------------------------------- */
     .fixed-battle-ui {
       position: fixed;
       top: 12px;
@@ -222,29 +240,29 @@
     .hp-container {
       width: 100%;
       background: rgba(0, 0, 0, 0.85);
-      border: 2px solid #a855f7;
+      border: 2px solid #8b0000;
       border-radius: 10px;
-      height: 20px;
+      height: 22px;
       overflow: hidden;
-      box-shadow: 0 0 15px rgba(168, 85, 247, 0.8);
+      box-shadow: 0 0 15px rgba(139, 0, 0, 0.8);
     }
 
     .hp-bar {
       height: 100%;
       width: 100%;
-      background: linear-gradient(to right, #28a745, #85e085);
+      background: linear-gradient(to right, #e63946, #ff758c);
       transition: width 0.4s ease-out;
     }
 
     .combo-badge {
-      margin-top: 6px;
+      margin-top: 4px;
       background: linear-gradient(45deg, #ff0055, #ffaa00);
       color: #fff;
       font-weight: 900;
-      font-size: 1rem;
-      padding: 4px 14px;
-      border-radius: 15px;
-      box-shadow: 0 0 15px #ff0055;
+      font-size: 0.95rem;
+      padding: 2px 12px;
+      border-radius: 12px;
+      box-shadow: 0 0 12px #ff0055;
       opacity: 0;
       transform: scale(0.5);
       transition: all 0.3s;
@@ -258,134 +276,87 @@
     /* 💥 全画面エフェクト層 */
     .full-fx-layer {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
+      top: 0; left: 0; width: 100vw; height: 100vh;
       pointer-events: none;
       z-index: 15;
       overflow: hidden;
     }
 
-    /* 衝撃波 */
+    /* 衝撃波・斬撃（敵の立ち絵の位置：top: 140px 周辺に発生） */
     .impact-effect {
       position: absolute;
-      top: 30%; /* 🎯 衝撃波・スラッシュもボスの顔周辺に合わせる */
+      top: 140px;
       left: 50%;
-      width: 10px;
-      height: 10px;
-      background: radial-gradient(circle, #ffffff 10%, #00ffff 40%, rgba(255,0,255,0) 70%);
+      width: 10px; height: 10px;
+      background: radial-gradient(circle, #ffffff 10%, #ff4500 40%, rgba(255,0,0,0) 70%);
       border-radius: 50%;
       transform: translate(-50%, -50%) scale(0);
       opacity: 0;
     }
 
-    .impact-effect.active {
-      animation: impact-ring 0.45s ease-out;
-    }
+    .impact-effect.active { animation: impact-ring 0.45s ease-out; }
 
     @keyframes impact-ring {
       0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
-      50% { opacity: 0.9; }
-      100% { transform: translate(-50%, -50%) scale(100); opacity: 0; }
+      100% { transform: translate(-50%, -50%) scale(60); opacity: 0; }
     }
 
-    /* ⚔️ 全画面特大スラッシュ */
     .slash-effect {
       position: absolute;
-      top: 30%;
+      top: 140px;
       left: 50%;
-      width: 0;
-      height: 12px;
+      width: 0; height: 12px;
       background: #ffffff;
-      box-shadow: 0 0 30px #00e5ff, 0 0 60px #00e5ff, 0 0 90px #ffffff;
+      box-shadow: 0 0 30px #ff3300, 0 0 60px #ffaa00;
       transform: translate(-50%, -50%) rotate(-35deg);
       opacity: 0;
       border-radius: 6px;
     }
 
-    .slash-effect.active {
-      animation: slash-anim 0.35s cubic-bezier(0.1, 0.8, 0.3, 1);
-    }
+    .slash-effect.active { animation: slash-anim 0.35s cubic-bezier(0.1, 0.8, 0.3, 1); }
 
     @keyframes slash-anim {
       0% { width: 0; opacity: 1; transform: translate(-50%, -50%) rotate(-35deg) scaleY(1); }
-      50% { width: 200vw; opacity: 1; transform: translate(-50%, -50%) rotate(-35deg) scaleY(3); }
-      100% { width: 220vw; opacity: 0; transform: translate(-50%, -50%) rotate(-35deg) scaleY(0.1); }
+      50% { width: 120vw; opacity: 1; transform: translate(-50%, -50%) rotate(-35deg) scaleY(3); }
+      100% { width: 140vw; opacity: 0; transform: translate(-50%, -50%) rotate(-35deg) scaleY(0.1); }
     }
 
-    /* 🔥 2連撃全画面クロス */
-    .combo-slash-effect {
-      position: absolute;
-      top: 30%;
-      left: 50%;
-      width: 0;
-      height: 16px;
-      background: #ffffff;
-      box-shadow: 0 0 35px #ff0055, 0 0 70px #ffea00, 0 0 100px #ffffff;
-      transform: translate(-50%, -50%) rotate(40deg);
-      opacity: 0;
-      border-radius: 8px;
-    }
-
-    .combo-slash-effect.active {
-      animation: combo-slash-anim 0.4s cubic-bezier(0.1, 0.8, 0.3, 1) 0.08s;
-    }
-
-    @keyframes combo-slash-anim {
-      0% { width: 0; opacity: 1; transform: translate(-50%, -50%) rotate(40deg) scaleY(1); }
-      50% { width: 200vw; opacity: 1; transform: translate(-50%, -50%) rotate(40deg) scaleY(4); }
-      100% { width: 220vw; opacity: 0; transform: translate(-50%, -50%) rotate(40deg) scaleY(0.1); }
-    }
-
-    /* 👑 ダメージ数値 */
+    /* ダメージ数値 */
     .damage-num {
       position: absolute;
-      top: 20%;
+      top: 90px;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 3.5rem;
+      font-size: 3rem;
       font-weight: 900;
       color: #ffea00;
-      text-shadow: 0 0 15px #ffea00, 4px 4px 0 #000, -2px -2px 0 #000;
+      text-shadow: 0 0 15px #ffea00, 3px 3px 0 #000;
       opacity: 0;
       font-style: italic;
       white-space: nowrap;
     }
 
-    .damage-num.critical {
-      color: #00ffff;
-      font-size: 4rem;
-      text-shadow: 0 0 25px #00ffff, 4px 4px 0 #000;
-    }
-
-    .damage-num.combo {
-      color: #ff0055;
-      font-size: 4.8rem;
-      text-shadow: 0 0 30px #ff0055, 0 0 45px #ffea00, 5px 5px 0 #000;
-    }
-
-    .damage-num.active {
-      animation: pop-damage 0.85s ease-out;
-    }
+    .damage-num.active { animation: pop-damage 0.85s ease-out; }
 
     @keyframes pop-damage {
-      0% { transform: translate(-50%, 40px) scale(0.2) rotate(-10deg); opacity: 1; }
-      40% { transform: translate(-50%, -20px) scale(1.3) rotate(5deg); opacity: 1; }
-      100% { transform: translate(-50%, -60px) scale(1) rotate(0deg); opacity: 0; }
+      0% { transform: translate(-50%, 20px) scale(0.3); opacity: 1; }
+      40% { transform: translate(-50%, -15px) scale(1.2); opacity: 1; }
+      100% { transform: translate(-50%, -40px) scale(1); opacity: 0; }
     }
 
     /* ----------------------------------- */
 
     .question-card {
-      background: #f1f3f5;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid #553a2e;
       padding: 15px;
       border-radius: 8px;
-      min-height: 60px;
-      font-size: 1rem;
+      min-height: 65px;
+      font-size: 1.05rem;
       margin-bottom: 12px;
       display: flex;
       align-items: center;
+      line-height: 1.5;
     }
 
     .feedback {
@@ -400,29 +371,27 @@
     }
 
     .feedback.correct {
-      background-color: #d4edda;
-      color: var(--success);
+      background-color: rgba(40, 167, 69, 0.2);
+      border: 1px solid var(--success);
+      color: #72e08a;
       display: block;
     }
 
     .feedback.incorrect {
-      background-color: #f8d7da;
-      color: var(--danger);
+      background-color: rgba(220, 53, 69, 0.2);
+      border: 1px solid var(--danger);
+      color: #ff8e98;
       display: block;
     }
 
     .timer-bar {
       position: absolute;
-      bottom: 0;
-      left: 0;
-      height: 4px;
-      width: 100%;
-      background-color: rgba(0, 0, 0, 0.15);
+      bottom: 0; left: 0; height: 4px; width: 100%;
+      background-color: rgba(255, 255, 255, 0.2);
     }
 
     .timer-progress {
-      height: 100%;
-      width: 100%;
+      height: 100%; width: 100%;
       background-color: currentColor;
       animation: countdown 1.5s linear forwards;
     }
@@ -436,10 +405,10 @@
       margin-top: 8px;
       padding: 6px 16px;
       font-size: 0.85rem;
-      background-color: var(--success);
-      color: white;
+      background: #28a745;
       border: none;
       border-radius: 6px;
+      color: white;
       cursor: pointer;
       font-weight: bold;
     }
@@ -449,20 +418,19 @@
 </head>
 <body>
 
-<!-- 👹 全画面背景ボス画像 -->
-<div id="bg-enemy-container" class="bg-enemy-container hidden">
-  <img id="bg-enemy-img" class="bg-enemy-img" src="boss.jpg" alt="ボス">
+<!-- 👹 画面上部中央：小さめの敵立ち絵 -->
+<div id="enemy-stage" class="enemy-stage hidden">
+  <img id="enemy-sprite" class="enemy-sprite" src="boss.jpg" alt="敵武将">
 </div>
 
 <!-- 💥 全画面攻撃エフェクト層 -->
 <div id="full-fx-layer" class="full-fx-layer hidden">
   <div id="impact" class="impact-effect"></div>
   <div id="slash" class="slash-effect"></div>
-  <div id="combo-slash" class="combo-slash-effect"></div>
   <div id="damage" class="damage-num">9999!</div>
 </div>
 
-<!-- 🩸 画面上部固定 HP＆コンボUI -->
+<!-- 🩸 画面最上部固定：HPバー -->
 <div id="fixed-battle-ui" class="fixed-battle-ui hidden">
   <div class="hp-container">
     <div id="hp-bar" class="hp-bar"></div>
@@ -470,11 +438,12 @@
   <div id="combo-badge" class="combo-badge">0 COMBO!</div>
 </div>
 
+<!-- 🎯 メインカード（画面中央から下部に配置） -->
 <div class="app-container">
   <!-- 1. ホーム画面（教科選択） -->
   <div id="home-screen">
-    <h1>一問一答 学習アプリ</h1>
-    <p style="text-align: center; color: #666;">学習したい教科を選んでください</p>
+    <h1>一問一答 学習合戦</h1>
+    <p style="text-align: center; color: #bba;">出陣する教科を選択してください</p>
     
     <div class="subject-grid">
       <button class="subject-btn" onclick="selectSubject('history', '歴史', '時代')">📜 歴史</button>
@@ -488,28 +457,28 @@
   <!-- 2. 分野設定画面 -->
   <div id="setup-screen" class="hidden">
     <h2 id="subject-title">教科名</h2>
-    <label><b id="category-label">出題分野を選択（複数可）:</b></label>
+    <label><b id="category-label">出題分野を選択:</b></label>
     
     <div class="select-tools">
-      <button type="button" id="select-all-btn">すべて選択</button>
-      <button type="button" id="deselect-all-btn">すべて解除</button>
+      <button type="button" id="select-all-btn">全選択</button>
+      <button type="button" id="deselect-all-btn">全解除</button>
     </div>
 
     <div class="category-group" id="category-checkboxes">
       <!-- JavaScriptで動的生成 -->
     </div>
     
-    <button id="start-btn">学習を開始する</button>
-    <button id="review-btn" style="background-color: #6c757d;">復習する (0件)</button>
-    <button onclick="goHome()" style="background-color: #888; margin-top: 5px;">ホームに戻る</button>
+    <button id="start-btn">いざ出陣（学習開始）</button>
+    <button id="review-btn" style="background: #4a3b35;">復習戦 (0件)</button>
+    <button onclick="goHome()" style="background: #332822; margin-top: 5px;">本陣へ戻る</button>
   </div>
 
   <!-- 3. クイズ画面 -->
   <div id="quiz-screen" class="hidden">
     <div class="stats">
-      <div>モード: <span id="current-mode"></span></div>
+      <div>合戦: <span id="current-mode"></span></div>
       <div>正答率: <span id="accuracy">0%</span></div>
-      <div>解いた数: <span id="progress">0/0</span></div>
+      <div>進捗: <span id="progress">0/0</span></div>
     </div>
 
     <div class="question-card" id="question-text">
@@ -518,12 +487,12 @@
 
     <form id="answer-form">
       <input type="text" id="answer-input" placeholder="回答を入力" autocomplete="off" required>
-      <button type="submit" id="submit-btn">回答する</button>
+      <button type="submit" id="submit-btn">一撃を叩き込む！</button>
     </form>
 
     <div id="feedback" class="feedback"></div>
-    <button id="next-btn" class="hidden" style="margin-top: 10px; background-color: var(--success);">次の問題へ</button>
-    <button id="back-setup-btn" style="background-color: #6c757d; margin-top: 10px;">分野選択に戻る</button>
+    <button id="next-btn" class="hidden" style="margin-top: 10px; background: #28a745;">次の問題へ</button>
+    <button id="back-setup-btn" style="background: #4a3b35; margin-top: 10px;">陣形選択に戻る</button>
   </div>
 </div>
 
@@ -537,7 +506,6 @@
   let wrongQuestions = [];
   let autoNextTimer = null;
 
-  // 🎮 ゲーム用変数
   let questionStartTime = 0;
   let sessionStartTime = 0;
   let enemyHp = 100;
@@ -550,7 +518,7 @@
     currentSubjectName = name;
     
     document.getElementById('subject-title').textContent = `${name} 一問一答`;
-    document.getElementById('category-label').textContent = `出題する${labelText}を選択（複数可）:`;
+    document.getElementById('category-label').textContent = `出題する${labelText}を選択:`;
 
     wrongQuestions = JSON.parse(localStorage.getItem(`wrongQuestions_${key}`) || '[]');
 
@@ -611,7 +579,7 @@
     const filteredWrong = wrongQuestions.filter(q => selectedCats.includes(q.category));
     
     const btn = document.getElementById('review-btn');
-    btn.textContent = `選択カテゴリから復習 (${filteredWrong.length}件)`;
+    btn.textContent = `選択分野から復習 (${filteredWrong.length}件)`;
     btn.disabled = filteredWrong.length === 0;
 
     document.getElementById('start-btn').disabled = selectedCats.length === 0;
@@ -625,10 +593,10 @@
 
     if (isReviewMode) {
       currentSessionQuestions = wrongQuestions.filter(q => selectedCats.includes(q.category));
-      document.getElementById('current-mode').textContent = "復習";
+      document.getElementById('current-mode').textContent = "復習戦";
     } else {
       currentSessionQuestions = allQuestions.filter(q => selectedCats.includes(q.category));
-      document.getElementById('current-mode').textContent = "ランダム出題";
+      document.getElementById('current-mode').textContent = "通常戦";
     }
 
     currentSessionQuestions.sort(() => Math.random() - 0.5);
@@ -647,8 +615,8 @@
     updateHpBar();
     updateComboBadge();
 
-    // 全画面敵・エフェクト・UIを表示
-    document.getElementById('bg-enemy-container').classList.remove('hidden');
+    // 敵立ち絵・UIを表示
+    document.getElementById('enemy-stage').classList.remove('hidden');
     document.getElementById('full-fx-layer').classList.remove('hidden');
     document.getElementById('fixed-battle-ui').classList.remove('hidden');
 
@@ -660,8 +628,8 @@
   function showQuestion() {
     clearTimeout(autoNextTimer);
 
-    const bgEnemyImg = document.getElementById('bg-enemy-img');
-    bgEnemyImg.className = 'bg-enemy-img'; 
+    const enemySprite = document.getElementById('enemy-sprite');
+    enemySprite.className = 'enemy-sprite'; 
 
     const q = currentSessionQuestions[currentQuestionIndex];
     document.getElementById('question-text').textContent = `【${q.category}】 ${q.question}`;
@@ -688,61 +656,45 @@
   function updateHpBar() {
     const hpBar = document.getElementById('hp-bar');
     hpBar.style.width = `${Math.max(0, enemyHp)}%`;
-
-    if (enemyHp <= 30) {
-      hpBar.style.background = 'linear-gradient(to right, #dc3545, #ff6b6b)';
-    } else {
-      hpBar.style.background = 'linear-gradient(to right, #28a745, #85e085)';
-    }
   }
 
   function updateComboBadge() {
     const badge = document.getElementById('combo-badge');
     if (comboCount >= 2) {
-      badge.textContent = `${comboCount} COMBO!🔥`;
+      badge.textContent = `${comboCount} 連撃!🔥`;
       badge.classList.add('show');
     } else {
       badge.classList.remove('show');
     }
   }
 
-  // 🎮 全画面超ド派手攻撃エフェクト
   function triggerAttackEffect(timeSec) {
-    const bgEnemyImg = document.getElementById('bg-enemy-img');
+    const enemySprite = document.getElementById('enemy-sprite');
     const impact = document.getElementById('impact');
     const slash = document.getElementById('slash');
-    const comboSlash = document.getElementById('combo-slash');
     const damage = document.getElementById('damage');
 
     let multiplier = 1.0;
     let label = '';
-    let isComboAttack = false;
 
     if (timeSec <= 5.0) {
       comboCount++;
-      if (comboCount > maxComboCount) {
-        maxComboCount = comboCount;
-      }
+      if (comboCount > maxComboCount) maxComboCount = comboCount;
       
       if (comboCount >= 3) {
         multiplier = 1.5;
-        label = `🔥 ${comboCount} COMBO! `;
-        damage.className = 'damage-num combo';
-        isComboAttack = true;
+        label = `🔥 ${comboCount}連撃! `;
       } else if (timeSec <= 3.0) {
         multiplier = 1.2;
-        label = '⚡ CRITICAL! ';
-        damage.className = 'damage-num critical';
+        label = '⚡ 会心の一撃! ';
       } else {
         multiplier = 1.0;
-        label = 'GREAT! ';
-        damage.className = 'damage-num';
+        label = '見事! ';
       }
     } else {
       comboCount = 0;
-      multiplier = 0.6;
-      label = 'GOOD ';
-      damage.className = 'damage-num';
+      multiplier = 0.7;
+      label = '浅い! ';
     }
 
     updateComboBadge();
@@ -756,29 +708,20 @@
     const displayDamage = Math.round(damagePercent * 100);
     damage.textContent = `${label}${displayDamage}`;
 
-    // リセット処理
-    document.body.classList.remove('full-shake');
-    bgEnemyImg.classList.remove('shake', 'defeated');
+    enemySprite.classList.remove('shake', 'defeated');
     impact.classList.remove('active');
     slash.classList.remove('active');
-    comboSlash.classList.remove('active');
     damage.classList.remove('active');
 
     setTimeout(() => {
-      document.body.classList.add('full-shake');
       impact.classList.add('active');
       slash.classList.add('active');
-
-      if (isComboAttack) {
-        comboSlash.classList.add('active');
-      }
-
       damage.classList.add('active');
 
       if (enemyHp <= 0) {
-        bgEnemyImg.classList.add('defeated');
+        enemySprite.classList.add('defeated');
       } else {
-        bgEnemyImg.classList.add('shake');
+        enemySprite.classList.add('shake');
       }
     }, 10);
   }
@@ -812,13 +755,9 @@
       wrongQuestions = wrongQuestions.filter(item => item.id !== q.id);
 
       if (enemyHp <= 0) {
-        autoNextTimer = setTimeout(() => {
-          finishQuiz();
-        }, 1500);
+        autoNextTimer = setTimeout(() => { finishQuiz(); }, 1500);
       } else {
-        autoNextTimer = setTimeout(() => {
-          nextQuestion();
-        }, 1500);
+        autoNextTimer = setTimeout(() => { nextQuestion(); }, 1500);
       }
 
     } else {
@@ -826,7 +765,7 @@
       updateComboBadge();
 
       feedback.className = "feedback incorrect";
-      feedback.textContent = `不正解…❌ (正解: ${q.answer})`;
+      feedback.textContent = `無念…❌ (正答: ${q.answer})`;
       if (!wrongQuestions.some(item => item.id === q.id)) {
         wrongQuestions.push(q);
       }
@@ -859,10 +798,7 @@
   function formatElapsedTime(seconds) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    if (mins > 0) {
-      return `${mins}分${secs}秒`;
-    }
-    return `${secs}秒`;
+    return mins > 0 ? `${mins}分${secs}秒` : `${secs}秒`;
   }
 
   function finishQuiz() {
@@ -873,16 +809,16 @@
     const elapsedSeconds = Math.round((Date.now() - sessionStartTime) / 1000);
     const timeFormatted = formatElapsedTime(elapsedSeconds);
     
-    const titleMsg = isDefeated ? "🎉 敵を撃破しました！お見事！" : "💪 撃破ならず…！次回リベンジしよう！";
+    const titleMsg = isDefeated ? "🎉 敵将討ち取ったりーッ！完全勝利！" : "💪 合戦終了！次回こそ討ち取らん！";
 
     const summaryText = 
       `${titleMsg}\n\n` +
       `-------------------------\n` +
-      `【学習リザルト】\n` +
-      `・クリア時間: ${timeFormatted}\n` +
-      `・正答数: ${correctCount} / ${totalQ} 問 (挑戦問題数)\n` +
+      `【戦果報告】\n` +
+      `・所要時間: ${timeFormatted}\n` +
+      `・討伐数: ${correctCount} / ${totalQ} 問\n` +
       `・正答率: ${accuracyRate}%\n` +
-      `・最大コンボ: ${maxComboCount} COMBO🔥\n` +
+      `・最大連撃: ${maxComboCount} 連撃🔥\n` +
       `-------------------------`;
 
     alert(summaryText);
@@ -890,14 +826,13 @@
   }
 
   document.getElementById('next-btn').addEventListener('click', nextQuestion);
-
   document.getElementById('back-setup-btn').addEventListener('click', () => {
     clearTimeout(autoNextTimer);
     goSetup();
   });
 
   function hideBattleLayers() {
-    document.getElementById('bg-enemy-container').classList.add('hidden');
+    document.getElementById('enemy-stage').classList.add('hidden');
     document.getElementById('full-fx-layer').classList.add('hidden');
     document.getElementById('fixed-battle-ui').classList.add('hidden');
   }

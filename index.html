@@ -9,8 +9,8 @@
       --primary: #4a6fa5;
       --success: #28a745;
       --danger: #dc3545;
-      --bg: #1e1e2f;
-      --card-bg: #ffffff;
+      --bg: #0d0614;
+      --card-bg: rgba(255, 255, 255, 0.9);
     }
     
     body {
@@ -21,6 +21,10 @@
       padding: 15px;
       display: flex;
       justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+      overflow-x: hidden;
     }
 
     .app-container {
@@ -29,7 +33,10 @@
       background: var(--card-bg);
       border-radius: 12px;
       padding: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      position: relative;
+      z-index: 10;
+      backdrop-filter: blur(5px);
     }
 
     h1, h2 {
@@ -121,7 +128,7 @@
     }
 
     .stats {
-      background: #eef2f7;
+      background: rgba(238, 242, 247, 0.9);
       padding: 8px 10px;
       border-radius: 8px;
       font-size: 0.85rem;
@@ -132,48 +139,92 @@
     }
 
     /* -----------------------------------
-       🎮 パズドラ風 バトルステージ演出
+       🌌 全画面バトルステージ演出
     ----------------------------------- */
-    .battle-stage {
-      position: relative;
-      height: 200px; /* 画像が見やすいよう高さを少し拡張 */
-      background: #0d0614;
-      border-radius: 10px;
-      margin-bottom: 10px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
-      box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+    /* 全画面振動演出 */
+    body.full-shake {
+      animation: screen-shake 0.35s ease-in-out;
     }
 
-    /* ステージの振動演出（攻撃時） */
-    .battle-stage.stage-shake {
-      animation: stage-shake 0.3s ease-in-out;
-    }
-
-    @keyframes stage-shake {
+    @keyframes screen-shake {
       0% { transform: translate(0, 0); }
-      20% { transform: translate(-8px, 6px); }
-      40% { transform: translate(8px, -6px); }
-      60% { transform: translate(-5px, -3px); }
-      80% { transform: translate(5px, 3px); }
+      20% { transform: translate(-12px, 8px) rotate(-1deg); }
+      40% { transform: translate(12px, -8px) rotate(1deg); }
+      60% { transform: translate(-8px, -4px); }
+      80% { transform: translate(8px, 4px); }
       100% { transform: translate(0, 0); }
     }
 
-    /* HPゲージ */
+    /* 全画面背景ボス画像 */
+    .bg-enemy-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .bg-enemy-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      /* 🎯 画像の上部（顔のパーツ）を中心に表示する設定 */
+      object-position: center 20%;
+      opacity: 0.6; /* 少し明るめに調整 */
+      filter: brightness(0.85) contrast(1.2);
+      transition: transform 0.1s, filter 0.3s, opacity 0.8s;
+    }
+
+    /* ボスダメージ演出（全画面フラッシュ） */
+    .bg-enemy-img.shake {
+      animation: boss-hit 0.4s ease-in-out;
+    }
+
+    @keyframes boss-hit {
+      0% { transform: scale(1); filter: brightness(0.85); }
+      20% { transform: scale(1.05) translate(-10px, 0); filter: brightness(2) drop-shadow(0 0 40px #00ffff); }
+      40% { transform: scale(1.05) translate(10px, 0); filter: brightness(2) drop-shadow(0 0 40px #ff0055); }
+      60% { transform: scale(1.02); filter: brightness(1.3); }
+      100% { transform: scale(1); filter: brightness(0.85); }
+    }
+
+    /* 撃破時消滅 */
+    .bg-enemy-img.defeated {
+      animation: boss-defeated 1.2s forwards;
+    }
+
+    @keyframes boss-defeated {
+      0% { transform: scale(1); filter: brightness(3) drop-shadow(0 0 50px white); opacity: 0.8; }
+      50% { transform: scale(1.1); filter: brightness(5) drop-shadow(0 0 80px red); opacity: 0.5; }
+      100% { transform: scale(0.8); filter: brightness(10); opacity: 0; }
+    }
+
+    /* 全画面固定 UI（HPゲージ＆コンボ） */
+    .fixed-battle-ui {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 500px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: none;
+    }
+
     .hp-container {
-      position: absolute;
-      top: 10px;
-      width: 85%;
-      background: rgba(0, 0, 0, 0.7);
+      width: 100%;
+      background: rgba(0, 0, 0, 0.8);
       border: 2px solid #a855f7;
       border-radius: 10px;
-      height: 18px;
+      height: 20px;
       overflow: hidden;
-      z-index: 5;
-      box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.8);
     }
 
     .hp-bar {
@@ -183,22 +234,18 @@
       transition: width 0.4s ease-out;
     }
 
-    /* コンボバッジ */
     .combo-badge {
-      position: absolute;
-      top: 35px;
-      right: 15px;
+      margin-top: 6px;
       background: linear-gradient(45deg, #ff0055, #ffaa00);
       color: #fff;
       font-weight: 900;
-      font-size: 0.9rem;
-      padding: 3px 10px;
-      border-radius: 12px;
-      box-shadow: 0 0 12px #ff0055;
+      font-size: 1rem;
+      padding: 4px 14px;
+      border-radius: 15px;
+      box-shadow: 0 0 15px #ff0055;
       opacity: 0;
       transform: scale(0.5);
       transition: all 0.3s;
-      z-index: 5;
     }
 
     .combo-badge.show {
@@ -206,89 +253,53 @@
       transform: scale(1);
     }
 
-    /* ⚡ 敵画像ボスキャラ */
-    .enemy-wrapper {
-      position: absolute;
+    /* 💥 全画面エフェクト層 */
+    .full-fx-layer {
+      position: fixed;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 15;
+      overflow: hidden;
     }
 
-    .enemy-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: transform 0.1s, opacity 0.5s, filter 0.3s;
-    }
-
-    /* ダメージを受けた時のボスの横揺れ & 発光 */
-    .enemy-img.shake {
-      animation: enemy-shake 0.4s ease-in-out;
-    }
-
-    @keyframes enemy-shake {
-      0% { transform: scale(1); filter: brightness(1); }
-      20% { transform: scale(0.95) translate(-10px, 0); filter: brightness(2.5) drop-shadow(0 0 25px #00ffff); }
-      40% { transform: scale(0.95) translate(10px, 0); filter: brightness(2.5) drop-shadow(0 0 25px #ff0055); }
-      60% { transform: scale(0.98) translate(-5px, 0); filter: brightness(1.5); }
-      80% { transform: scale(0.98) translate(5px, 0); }
-      100% { transform: scale(1); filter: brightness(1); }
-    }
-
-    /* 撃破演出 */
-    .enemy-img.defeated {
-      animation: enemy-defeated 1s forwards;
-    }
-
-    @keyframes enemy-defeated {
-      0% { transform: scale(1); filter: brightness(3) drop-shadow(0 0 30px white); }
-      50% { transform: scale(1.1) rotate(3deg); filter: brightness(5) drop-shadow(0 0 50px red); opacity: 0.8; }
-      100% { transform: scale(0); filter: brightness(10); opacity: 0; }
-    }
-
-    /* 💥 衝撃波・ヒットエフェクト */
+    /* 衝撃波 */
     .impact-effect {
       position: absolute;
       top: 50%;
       left: 50%;
       width: 10px;
       height: 10px;
-      background: radial-gradient(circle, #ffffff 10%, #00ffff 50%, rgba(255,0,255,0) 70%);
+      background: radial-gradient(circle, #ffffff 10%, #00ffff 40%, rgba(255,0,255,0) 70%);
       border-radius: 50%;
       transform: translate(-50%, -50%) scale(0);
       opacity: 0;
-      pointer-events: none;
-      z-index: 3;
     }
 
     .impact-effect.active {
-      animation: impact-ring 0.4s ease-out;
+      animation: impact-ring 0.45s ease-out;
     }
 
     @keyframes impact-ring {
       0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
       50% { opacity: 0.9; }
-      100% { transform: translate(-50%, -50%) scale(35); opacity: 0; }
+      100% { transform: translate(-50%, -50%) scale(100); opacity: 0; }
     }
 
-    /* ⚔️ ネオン斬撃スラッシュ */
+    /* ⚔️ 全画面特大スラッシュ */
     .slash-effect {
       position: absolute;
       top: 50%;
       left: 50%;
       width: 0;
-      height: 8px;
+      height: 12px;
       background: #ffffff;
-      box-shadow: 0 0 20px #00e5ff, 0 0 40px #00e5ff, 0 0 60px #ffffff;
+      box-shadow: 0 0 30px #00e5ff, 0 0 60px #00e5ff, 0 0 90px #ffffff;
       transform: translate(-50%, -50%) rotate(-35deg);
       opacity: 0;
-      pointer-events: none;
-      z-index: 4;
-      border-radius: 4px;
+      border-radius: 6px;
     }
 
     .slash-effect.active {
@@ -297,24 +308,22 @@
 
     @keyframes slash-anim {
       0% { width: 0; opacity: 1; transform: translate(-50%, -50%) rotate(-35deg) scaleY(1); }
-      50% { width: 140%; opacity: 1; transform: translate(-50%, -50%) rotate(-35deg) scaleY(2.5); }
-      100% { width: 160%; opacity: 0; transform: translate(-50%, -50%) rotate(-35deg) scaleY(0.1); }
+      50% { width: 200vw; opacity: 1; transform: translate(-50%, -50%) rotate(-35deg) scaleY(3); }
+      100% { width: 220vw; opacity: 0; transform: translate(-50%, -50%) rotate(-35deg) scaleY(0.1); }
     }
 
-    /* 🔥 2連撃クロススラッシュ */
+    /* 🔥 2連撃全画面クロス */
     .combo-slash-effect {
       position: absolute;
       top: 50%;
       left: 50%;
       width: 0;
-      height: 12px;
+      height: 16px;
       background: #ffffff;
-      box-shadow: 0 0 25px #ff0055, 0 0 50px #ffea00, 0 0 70px #ffffff;
+      box-shadow: 0 0 35px #ff0055, 0 0 70px #ffea00, 0 0 100px #ffffff;
       transform: translate(-50%, -50%) rotate(40deg);
       opacity: 0;
-      pointer-events: none;
-      z-index: 4;
-      border-radius: 6px;
+      border-radius: 8px;
     }
 
     .combo-slash-effect.active {
@@ -323,35 +332,35 @@
 
     @keyframes combo-slash-anim {
       0% { width: 0; opacity: 1; transform: translate(-50%, -50%) rotate(40deg) scaleY(1); }
-      50% { width: 150%; opacity: 1; transform: translate(-50%, -50%) rotate(40deg) scaleY(3); }
-      100% { width: 180%; opacity: 0; transform: translate(-50%, -50%) rotate(40deg) scaleY(0.1); }
+      50% { width: 200vw; opacity: 1; transform: translate(-50%, -50%) rotate(40deg) scaleY(4); }
+      100% { width: 220vw; opacity: 0; transform: translate(-50%, -50%) rotate(40deg) scaleY(0.1); }
     }
 
-    /* 👑 かっこいいダメージ数字 */
+    /* 👑 ダメージ数値（画面中央ポップ） */
     .damage-num {
       position: absolute;
-      top: 30%;
-      font-size: 2.2rem;
+      top: 25%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 3.5rem;
       font-weight: 900;
       color: #ffea00;
-      text-shadow: 0 0 10px #ffea00, 3px 3px 0 #000, -2px -2px 0 #000;
+      text-shadow: 0 0 15px #ffea00, 4px 4px 0 #000, -2px -2px 0 #000;
       opacity: 0;
-      pointer-events: none;
-      text-align: center;
-      z-index: 6;
       font-style: italic;
+      white-space: nowrap;
     }
 
     .damage-num.critical {
       color: #00ffff;
-      font-size: 2.6rem;
-      text-shadow: 0 0 15px #00ffff, 3px 3px 0 #000;
+      font-size: 4rem;
+      text-shadow: 0 0 25px #00ffff, 4px 4px 0 #000;
     }
 
     .damage-num.combo {
       color: #ff0055;
-      font-size: 3rem;
-      text-shadow: 0 0 20px #ff0055, 0 0 30px #ffea00, 4px 4px 0 #000;
+      font-size: 4.8rem;
+      text-shadow: 0 0 30px #ff0055, 0 0 45px #ffea00, 5px 5px 0 #000;
     }
 
     .damage-num.active {
@@ -359,9 +368,9 @@
     }
 
     @keyframes pop-damage {
-      0% { transform: scale(0.2) translateY(30px) rotate(-10deg); opacity: 1; }
-      40% { transform: scale(1.3) translateY(-15px) rotate(5deg); opacity: 1; }
-      100% { transform: scale(1) translateY(-45px) rotate(0deg); opacity: 0; }
+      0% { transform: translate(-50%, 40px) scale(0.2) rotate(-10deg); opacity: 1; }
+      40% { transform: translate(-50%, -20px) scale(1.3) rotate(5deg); opacity: 1; }
+      100% { transform: translate(-50%, -60px) scale(1) rotate(0deg); opacity: 0; }
     }
 
     /* ----------------------------------- */
@@ -421,7 +430,6 @@
       to { width: 0%; }
     }
 
-    /* ⏩ スキップボタンのスタイル */
     .skip-btn {
       margin-top: 8px;
       padding: 6px 16px;
@@ -434,10 +442,31 @@
       font-weight: bold;
     }
 
-    .hidden { display: none; }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
+
+<!-- 👹 全画面背景ボス画像 -->
+<div id="bg-enemy-container" class="bg-enemy-container hidden">
+  <img id="bg-enemy-img" class="bg-enemy-img" src="boss.jpg" alt="ボス">
+</div>
+
+<!-- 💥 全画面攻撃エフェクト層 -->
+<div id="full-fx-layer" class="full-fx-layer hidden">
+  <div id="impact" class="impact-effect"></div>
+  <div id="slash" class="slash-effect"></div>
+  <div id="combo-slash" class="combo-slash-effect"></div>
+  <div id="damage" class="damage-num">9999!</div>
+</div>
+
+<!-- 🩸 画面上部固定 HP＆コンボUI -->
+<div id="fixed-battle-ui" class="fixed-battle-ui hidden">
+  <div class="hp-container">
+    <div id="hp-bar" class="hp-bar"></div>
+  </div>
+  <div id="combo-badge" class="combo-badge">0 COMBO!</div>
+</div>
 
 <div class="app-container">
   <!-- 1. ホーム画面（教科選択） -->
@@ -473,31 +502,12 @@
     <button onclick="goHome()" style="background-color: #888; margin-top: 5px;">ホームに戻る</button>
   </div>
 
-  <!-- 3. クイズ画面（ゲーム演出付き） -->
+  <!-- 3. クイズ画面 -->
   <div id="quiz-screen" class="hidden">
-    <div class="stats">
+    <div class="stats" style="margin-top: 25px;">
       <div>モード: <span id="current-mode"></span></div>
       <div>正答率: <span id="accuracy">0%</span></div>
       <div>解いた数: <span id="progress">0/0</span></div>
-    </div>
-
-    <!-- 🎮 パズドラ風 バトル画面 -->
-    <div class="battle-stage" id="battle-stage">
-      <div class="hp-container">
-        <div id="hp-bar" class="hp-bar"></div>
-      </div>
-      <div id="combo-badge" class="combo-badge">0 COMBO!</div>
-      
-      <!-- 👹 ボス画像 (※同じフォルダの boss.jpg を読み込みます) -->
-      <div class="enemy-wrapper">
-        <img id="enemy-img" class="enemy-img" src="boss.jpg" alt="ボス">
-      </div>
-
-      <!-- 💥 特殊エフェクト群 -->
-      <div id="impact" class="impact-effect"></div>
-      <div id="slash" class="slash-effect"></div>
-      <div id="combo-slash" class="combo-slash-effect"></div>
-      <div id="damage" class="damage-num">9999!</div>
     </div>
 
     <div class="question-card" id="question-text">
@@ -527,11 +537,11 @@
 
   // 🎮 ゲーム用変数
   let questionStartTime = 0;
-  let sessionStartTime = 0; // ⏱️ 全体の開始時間
+  let sessionStartTime = 0;
   let enemyHp = 100;
   let baseDamagePerQuestion = 0;
-  let comboCount = 0;      // 現在のコンボ数
-  let maxComboCount = 0;   // 🏆 セッション内の最大コンボ数
+  let comboCount = 0;
+  let maxComboCount = 0;
 
   function selectSubject(key, name, labelText) {
     currentSubjectKey = key;
@@ -624,18 +634,21 @@
     currentQuestionIndex = 0;
     correctCount = 0;
     comboCount = 0;
-    maxComboCount = 0; // 最大コンボ数をリセット
-    enemyHp = 100;     // HP満タン(100%)
+    maxComboCount = 0;
+    enemyHp = 100;
 
-    // ⏱️ タイマー計測開始
     sessionStartTime = Date.now();
 
-    // 🎯 1問題あたりの基準攻撃力を計算
     const totalQ = currentSessionQuestions.length;
     baseDamagePerQuestion = totalQ > 0 ? (100 / totalQ) : 100;
 
     updateHpBar();
     updateComboBadge();
+
+    // 全画面敵・エフェクト・UIを表示
+    document.getElementById('bg-enemy-container').classList.remove('hidden');
+    document.getElementById('full-fx-layer').classList.remove('hidden');
+    document.getElementById('fixed-battle-ui').classList.remove('hidden');
 
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('quiz-screen').classList.remove('hidden');
@@ -645,9 +658,8 @@
   function showQuestion() {
     clearTimeout(autoNextTimer);
 
-    // ボス画像を初期化
-    const enemyImg = document.getElementById('enemy-img');
-    enemyImg.className = 'enemy-img'; 
+    const bgEnemyImg = document.getElementById('bg-enemy-img');
+    bgEnemyImg.className = 'bg-enemy-img'; 
 
     const q = currentSessionQuestions[currentQuestionIndex];
     document.getElementById('question-text').textContent = `【${q.category}】 ${q.question}`;
@@ -661,8 +673,6 @@
     feedback.innerHTML = '';
 
     updateStats();
-
-    // ⏱️ 出題時間を記録
     questionStartTime = Date.now();
   }
 
@@ -694,10 +704,9 @@
     }
   }
 
-  // 🎮 超カッコいい攻撃アニメーション＆コンボ判定処理
+  // 🎮 全画面超ド派手攻撃エフェクト
   function triggerAttackEffect(timeSec) {
-    const stage = document.getElementById('battle-stage');
-    const enemyImg = document.getElementById('enemy-img');
+    const bgEnemyImg = document.getElementById('bg-enemy-img');
     const impact = document.getElementById('impact');
     const slash = document.getElementById('slash');
     const comboSlash = document.getElementById('combo-slash');
@@ -707,32 +716,27 @@
     let label = '';
     let isComboAttack = false;
 
-    // ⏱️ 5秒判定 & コンボ処理
     if (timeSec <= 5.0) {
-      comboCount++; // 5秒以内ならコンボ加算
+      comboCount++;
       if (comboCount > maxComboCount) {
-        maxComboCount = comboCount; // 🏆 最大コンボ更新
+        maxComboCount = comboCount;
       }
       
       if (comboCount >= 3) {
-        // 🔥 3連続5秒以内：超コンボ（連撃）
         multiplier = 1.5;
         label = `🔥 ${comboCount} COMBO! `;
         damage.className = 'damage-num combo';
         isComboAttack = true;
       } else if (timeSec <= 3.0) {
-        // 3秒以内：クリティカル
         multiplier = 1.2;
         label = '⚡ CRITICAL! ';
         damage.className = 'damage-num critical';
       } else {
-        // 5秒以内：GREAT
         multiplier = 1.0;
         label = 'GREAT! ';
         damage.className = 'damage-num';
       }
     } else {
-      // 5秒超過：コンボリセット
       comboCount = 0;
       multiplier = 0.6;
       label = 'GOOD ';
@@ -741,52 +745,49 @@
 
     updateComboBadge();
 
-    // ダメージ計算（HP減算）
     const damagePercent = baseDamagePerQuestion * multiplier;
     enemyHp -= damagePercent;
     if (enemyHp < 0) enemyHp = 0;
 
     updateHpBar();
 
-    // 表示用数値
     const displayDamage = Math.round(damagePercent * 100);
     damage.textContent = `${label}${displayDamage}`;
 
-    // アニメーションのリセット＆一括発動
-    stage.classList.remove('stage-shake');
-    enemyImg.classList.remove('shake', 'defeated');
+    // リセット処理
+    document.body.classList.remove('full-shake');
+    bgEnemyImg.classList.remove('shake', 'defeated');
     impact.classList.remove('active');
     slash.classList.remove('active');
     comboSlash.classList.remove('active');
     damage.classList.remove('active');
 
     setTimeout(() => {
-      stage.classList.add('stage-shake'); // ステージ自体が激しく揺れる
-      impact.classList.add('active');     // 衝撃波エフェクト
-      slash.classList.add('active');      // 斬撃エフェクト
+      document.body.classList.add('full-shake'); // 全画面揺れ
+      impact.classList.add('active');
+      slash.classList.add('active');
 
       if (isComboAttack) {
-        comboSlash.classList.add('active'); // 2連撃クロス斬り
+        comboSlash.classList.add('active');
       }
 
       damage.classList.add('active');
 
       if (enemyHp <= 0) {
-        enemyImg.classList.add('defeated'); // ボス撃破演出
+        bgEnemyImg.classList.add('defeated');
       } else {
-        enemyImg.classList.add('shake');    // ボスがダメージをくらって揺れる
+        bgEnemyImg.classList.add('shake');
       }
     }, 10);
   }
 
-  // 解答判定処理
+  // 解答判定
   document.getElementById('answer-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const input = document.getElementById('answer-input').value.trim();
     const q = currentSessionQuestions[currentQuestionIndex];
     const feedback = document.getElementById('feedback');
 
-    // ⏱️ 解答時間を計測
     const answerTimeSec = (Date.now() - questionStartTime) / 1000;
 
     document.getElementById('answer-input').disabled = true;
@@ -796,7 +797,6 @@
     const cleanAnswer = q.answer.toLowerCase().replaceAll(' ', '');
 
     if (cleanInput === cleanAnswer) {
-      // --- 正解時 ---
       triggerAttackEffect(answerTimeSec);
 
       correctCount++;
@@ -809,11 +809,10 @@
       `;
       wrongQuestions = wrongQuestions.filter(item => item.id !== q.id);
 
-      // 💥 ボス撃破判定（HPが0になったら即座にクリア演出へ）
       if (enemyHp <= 0) {
         autoNextTimer = setTimeout(() => {
           finishQuiz();
-        }, 1500); // 撃破アニメーションを見せるため少し長めの余韻
+        }, 1500);
       } else {
         autoNextTimer = setTimeout(() => {
           nextQuestion();
@@ -821,8 +820,7 @@
       }
 
     } else {
-      // --- 不正解時 ---
-      comboCount = 0; // 不正解でコンボ切れ
+      comboCount = 0;
       updateComboBadge();
 
       feedback.className = "feedback incorrect";
@@ -838,7 +836,6 @@
     updateReviewBtn();
   });
 
-  // ⏩ タイマースキップ処理
   function skipTimer() {
     clearTimeout(autoNextTimer);
     if (enemyHp <= 0) {
@@ -857,7 +854,6 @@
     }
   }
 
-  // ⏱️ 時間フォーマット（分・秒）
   function formatElapsedTime(seconds) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -867,13 +863,11 @@
     return `${secs}秒`;
   }
 
-  // 🏆 学習セッション終了処理
   function finishQuiz() {
-    const totalQ = currentQuestionIndex + 1; // 実際に解いた問題数
+    const totalQ = currentQuestionIndex + 1;
     const accuracyRate = Math.round((correctCount / totalQ) * 100);
     const isDefeated = enemyHp <= 0;
 
-    // ⏱️ 全体の所要時間を計算
     const elapsedSeconds = Math.round((Date.now() - sessionStartTime) / 1000);
     const timeFormatted = formatElapsedTime(elapsedSeconds);
     
@@ -900,8 +894,15 @@
     goSetup();
   });
 
+  function hideBattleLayers() {
+    document.getElementById('bg-enemy-container').classList.add('hidden');
+    document.getElementById('full-fx-layer').classList.add('hidden');
+    document.getElementById('fixed-battle-ui').classList.add('hidden');
+  }
+
   function goSetup() {
     clearTimeout(autoNextTimer);
+    hideBattleLayers();
     document.getElementById('quiz-screen').classList.add('hidden');
     document.getElementById('setup-screen').classList.remove('hidden');
     updateReviewBtn();
@@ -909,6 +910,7 @@
 
   function goHome() {
     clearTimeout(autoNextTimer);
+    hideBattleLayers();
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('home-screen').classList.remove('hidden');
   }
